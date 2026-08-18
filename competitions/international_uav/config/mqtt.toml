@@ -1,0 +1,34 @@
+# Every topic the Uluslararası İHA interface publishes or subscribes to.
+# Broker address and port are in the shared config/ folder at the app root.
+# These names must match the ground station's topic map (International-UAV,
+# docs/TASKS.md WP-02).
+
+[mqtt.topics.subscribe]
+# Pasifik (the scanning VTOL).
+pasifik_telemetry = "pasifik/telemetry"
+pasifik_status    = "pasifik/status"
+scan_progress     = "pasifik/scan/progress"
+# Detections waiting for the operator's verdict, one message per detection.
+detection_frame   = "pasifik/detection/frame"
+# Swarm agents. The "+" wildcard matches the agent id.
+agent_telemetry = "agent/+/telemetry"
+agent_status    = "agent/+/status"
+# Targets the ground station has confirmed, and who is flying to them.
+target_confirmed  = "targets/confirmed"
+target_assignment = "targets/assignment"
+# Link latency/loss per hop and the antenna tracker's pointing state.
+system_health = "system/health"
+# Acknowledgements of HOLD / ABORT / RESUME, one per vehicle.
+command_ack = "system/command_ack"
+
+[mqtt.topics.publish]
+# Operator verdicts on detections. Approving one sends its identification and
+# its ground coordinate to the ground station, which turns it into a target
+# and assigns an agent; denying one drops it.
+detection_approve = "ui/detection/approve"
+detection_reject  = "ui/detection/reject"
+# Verdicts on targets that are already in the pool.
+target_veto    = "ui/targets/veto"
+target_requeue = "ui/targets/requeue"
+# Mission-wide commands from the mission bar.
+system_command = "ui/system/command"

@@ -1,0 +1,76 @@
+# Everything the SUAS 2026 rules fix. Numbers here come from the Team Handbook,
+# not from preference — see SUAS/docs/COMPETITION_RULES.md before changing any
+# of them.
+
+[mission]
+# 3.1.1 Mission Time: 45 minutes covering setup, flight and deliverables.
+mission_seconds = 2700
+# The clock changes state before the limit, because overrun costs 0.5% of
+# mission demonstration points per second.
+caution_seconds = 2100
+critical_seconds = 2400
+
+# 3.0.4 Flight Boundary altitude envelope, in feet AGL.
+altitude_floor_feet = 150.0
+altitude_ceiling_feet = 400.0
+
+# Appendix B: the ground station is inspected for a waypoint threshold under
+# 50 ft. This is the number the inspector reads off our screen.
+waypoint_threshold_limit_feet = 50.0
+
+# How close to the boundary the ribbon starts warning, in feet.
+boundary_caution_feet = 400.0
+boundary_critical_feet = 200.0
+
+# 3.2.2: 1 to 10 laps, each roughly 2 miles, up to 15 waypoints.
+maximum_laps = 10
+lap_length_metres = 3218.0
+
+[scoring]
+# 3.2.3 Flight Endurance: 200 * (laps / 10)^2, plus takeoff and landing awards.
+endurance_maximum_points = 200.0
+endurance_lap_divisor = 10.0
+
+[boundaries]
+# 3.0.4 Flight Boundary. The UAS is out of bounds outside this polygon.
+flight = [
+    [36.2193143935478, -96.00171089172362],
+    [36.2203876816226, -96.0041356086731],
+    [36.2208031440207, -96.006817817688],
+    [36.2205954130975, -96.0094571113586],
+    [36.2198164172223, -96.01181745529171],
+    [36.2181891563676, -96.0142421722412],
+    [36.2149951257415, -96.0109269618988],
+    [36.2128397305797, -96.0107660293579],
+    [36.2128051052733, -96.00916743278502],
+    [36.2106063669373, -96.00924253463749],
+    [36.2106583063506, -96.00173234939579],
+]
+
+# 3.0.5 Search Boundaries, one per runway, used for both Risk Mapping and
+# Search Detect and Deliver. Entering one locks the lap count.
+search_runway_1 = [
+    [36.216341, -96.010424],
+    [36.21675, -96.00755],
+    [36.218054, -96.007835],
+    [36.217645, -96.010709],
+]
+
+search_runway_2 = [
+    [36.213469, -96.002635],
+    [36.215795, -96.002635],
+    [36.215795, -96.004286],
+    [36.213469, -96.004286],
+]
+
+# 3.0.2 Runways. The handbook gives sizes but not corner coordinates; take them
+# off the Appendix A Google Earth file at check-in and fill these in. An empty
+# list simply draws nothing.
+runway_1 = []
+runway_2 = []
+
+[waypoints]
+# 3.2.2: the lap sequence is handed over at Check-In, before Mission Time, for
+# both flight lines. Save each as a QGC WPL file and point these at them.
+runway_1_file = "assets/missions/lap_runway_1.waypoints"
+runway_2_file = "assets/missions/lap_runway_2.waypoints"

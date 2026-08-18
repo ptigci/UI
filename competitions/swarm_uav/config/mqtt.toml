@@ -1,0 +1,60 @@
+# Every topic the Sürü İHA interface publishes or subscribes to, and the
+# formation payload codes. Broker address and port are in the shared
+# config/ folder at the app root.
+
+# Commands published by the UI. The ground station (computer/) subscribes to these.
+[mqtt.topics.publish]
+drone_number = "ui/swarm/drone_number"
+arm          = "ui/drone/arm"
+disarm       = "ui/drone/disarm"
+force_arm    = "ui/drone/force_arm"
+force_disarm = "ui/drone/force_disarm"
+takeoff      = "ui/drone/takeoff"
+land         = "ui/drone/land"
+move         = "ui/drone/move"
+# Velocity step-response measurement for collision avoidance; per-drone, outside missions.
+calibrate_tau = "ui/drone/calibrate_tau"
+# Command latency measurement for the synchronized start; per-drone, outside
+# missions, and it spins the motors, so the propellers must be off.
+calibrate_latency = "ui/drone/calibrate_latency"
+formation    = "ui/swarm/formation"
+mission1     = "swarm/mission/mission1"
+mission2     = "swarm/mission/mission2"
+# Operator-built mission plan: the whole plan, then the run command.
+mission_plan     = "ui/swarm/mission_plan"
+mission_plan_run = "ui/swarm/mission_plan_run"
+emergency    = "emergency"
+free         = "test"
+# Operator verdicts for VTOL object-detection frames.
+object_detection_approve = "vtol/object_detection/approve"
+object_detection_cancel  = "vtol/object_detection/cancel"
+# Simulation/real selection, published together with every REFRESH.
+simulation = "ui/simulation"
+
+# Data consumed by the UI. The "+" wildcard matches the vehicle id.
+[mqtt.topics.subscribe]
+telemetry = "drone/+/telemetry"
+camera    = "drone/+/camera"
+# Mission state machine of each drone, published on every change.
+state     = "drone/+/state"
+# Pre-flight GPS health reports.
+health    = "drone/+/health"
+# Periodic PPS clock reports: whether chrony has the companion clock in sync.
+clock     = "drone/+/clock"
+# How far each drone has got through the uploaded mission plan.
+plan_status = "drone/+/plan_status"
+# Decoded QR payloads forwarded by the ground station.
+qr_content = "drone/qr/content"
+# Colored landing zones detected while flying the route.
+color_zone = "drone/color_zone"
+# Detection frames feeding the VTOL object-detection browser.
+object_detection = "vtol/object_detection/frame"
+# Every message the ground station sends to the ESP, mirrored for the terminal.
+esp_log   = "computer/esp_log"
+
+# Values sent in the "formation" field of the formation payload.
+# These must match what drone/formations.py understands.
+[mqtt.formation_codes]
+line      = "L"
+v         = "V"
+inverse_v = "RV"

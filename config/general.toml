@@ -1,0 +1,13 @@
+# Day-to-day settings. This is the file to edit between bench sessions; the
+# other files under config/ hold stable UI constants. Sections here deep-merge
+# with the module files, so a key lives in exactly one file.
+
+[mqtt]
+# The broker this interface connects to. It is the one on the ground services
+# machine, and not one on a vehicle: the ground services are what talk to the
+# aircraft, and this talks to them. Loopback because the two normally run side
+# by side on the same laptop.
+broker_address = "localhost"
+
+[logging]
+level = "INFO"

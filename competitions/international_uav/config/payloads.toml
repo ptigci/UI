@@ -1,0 +1,96 @@
+# The wire format between this interface and the ground station: which key
+# carries which value. Nothing in the code may name a payload key directly.
+
+# Telemetry every vehicle publishes.
+[payloads.telemetry]
+latitude = "lat"
+longitude = "lon"
+altitude_agl = "alt_agl"
+ground_speed = "ground_speed"
+airspeed = "airspeed"
+heading = "heading"
+battery_percent = "battery_percent"
+battery_voltage = "battery_voltage"
+gps_fix = "gps_fix"
+rtk_status = "rtk"
+
+# Status: what the vehicle is doing right now.
+[payloads.status]
+state = "state"
+mode = "mode"
+armed = "armed"
+assigned_target = "target_id"
+payload_state = "payload"
+
+# Scan progress from the Pasifik.
+[payloads.scan]
+percent = "percent"
+legs_done = "legs_done"
+legs_total = "legs_total"
+seconds_remaining = "seconds_remaining"
+polygon = "polygon"
+legs = "legs"
+
+# A confirmed target, and the agent it was given to.
+[payloads.target]
+target_id = "target_id"
+label = "label"
+latitude = "lat"
+longitude = "lon"
+confidence = "confidence"
+priority = "priority"
+state = "state"
+agent_id = "agent_id"
+
+# Link health: one entry per hop, plus the antenna tracker.
+[payloads.health]
+links = "links"
+link_name = "name"
+latency_ms = "latency_ms"
+loss_percent = "loss_percent"
+last_seen_ms = "last_seen_ms"
+signal_strength = "rssi"
+tracker = "tracker"
+tracker_locked = "locked"
+tracker_error_degrees = "error_deg"
+# Whether the Pasifik's camera is being written to its card, passed on by the
+# ground station. Nothing is recorded until the aircraft says so, and the
+# mission bar shows that in red.
+recording = "recording"
+
+# Command acknowledgements, and the command payload itself.
+[payloads.command]
+command = "command"
+vehicle = "vehicle"
+target_id = "target_id"
+# Sent with a detection verdict so the ground station knows what was decided.
+verdict = "verdict"
+
+# Values carried in the fields above. These must match what the ground station
+# publishes and expects.
+[codes.command]
+# SEND DRONES. The ground station assigns everything the operator approved and
+# the swarm goes; it refuses while the Pasifik is still in the air.
+dispatch = "DISPATCH"
+hold = "HOLD"
+abort = "ABORT"
+resume = "RESUME"
+# The camera recording. The interface records nothing itself: the ground station
+# passes these on to the Pasifik, which writes its camera to its own card, and
+# the answer comes back on the recording flag in system/health.
+start_recording = "START_RECORDING"
+stop_recording = "STOP_RECORDING"
+
+[codes.verdict]
+approved = "APPROVED"
+rejected = "REJECTED"
+
+# Target lifecycle, in the order a target moves through it.
+[codes.target_state]
+candidate = "candidate"
+confirmed = "confirmed"
+assigned = "assigned"
+delivering = "delivering"
+delivered = "delivered"
+failed = "failed"
+vetoed = "vetoed"

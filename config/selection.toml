@@ -1,0 +1,35 @@
+# Selection screen: competitions and the vehicle count spinboxes.
+
+# Which vehicle counts each competition asks for on the selection screen.
+[competitions.suru_iha]
+label = "SÜRÜ İHA"
+uses_drones = true
+uses_vtols = false
+
+[competitions.suas]
+label = "SUAS"
+uses_drones = false
+uses_vtols = true
+
+[competitions.uluslararasi]
+label = "ULUSLARARASI"
+uses_drones = true
+uses_vtols = true
+
+# The startup screen itself. The competition buttons take their text from the
+# labels above, so a competition is named in exactly one place.
+[selection]
+title = "COMPETITIONS"
+subtitle = "Choose the competition to run, then the vehicles it flies with."
+vehicles_title = "VEHICLES"
+drone_count_text = "Drones"
+vtol_count_text = "VTOLs"
+continue_text = "CONTINUE"
+
+[counts]
+drone_default = 3
+drone_min = 1
+drone_max = 20
+vtol_default = 1
+vtol_min = 1
+vtol_max = 5

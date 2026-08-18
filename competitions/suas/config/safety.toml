@@ -1,0 +1,33 @@
+# The safety path. Appendix B requires RTL and flight termination to be
+# activatable from the ground control station, and 5.3.5 forbids that capability
+# from depending on anything outside our control — so it does not travel over
+# MQTT through the Raspberry Pi, and it must work with the Pi powered off.
+
+[safety]
+# Hold, do not click. A modal confirmation would cover the map, which 3.0.6
+# forbids, and a bare click would drop the aircraft out of the sky.
+hold_to_confirm_ms = 1500
+hold_progress_interval_ms = 50
+
+# How long we wait for the autopilot to acknowledge before saying so.
+command_ack_timeout_ms = 3000
+
+# The safety link is dead if no heartbeat arrived within this.
+heartbeat_timeout_ms = 3000
+
+[safety.commands]
+# What the operator is told they pressed, in the status line and in the log.
+return_to_launch = "RTL"
+land = "LAND"
+terminate = "TERMINATE"
+
+[safety.modes]
+# ArduPilot mode names, not numbers, so pymavlink resolves them for the frame
+# type the autopilot reports. Each is also the mode a heartbeat has to come back
+# reporting before the command counts as acknowledged rather than merely sent.
+#
+# The aircraft is a QuadPlane, so QLAND is the one that puts it down vertically
+# where it is — which is what "land it here" means at the end of a drop test.
+# RTL brings it home first.
+return_to_launch = "RTL"
+land = "QLAND"

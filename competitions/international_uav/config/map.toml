@@ -1,0 +1,50 @@
+# Everything drawn on the map: colours, sizes and the scale bar. The map has
+# no online tiles — a mission cannot depend on the internet — so the stitched
+# mosaic from the ground station is the only image layer.
+
+# The map paints itself, so a stylesheet cannot reach it. These mirror the
+# design tokens in UI/config/theme.toml — the accent for our own aircraft, the
+# status colours for everything that has a state. Change them together.
+[map.colors]
+background = "#080808"
+grid = "#202020"
+scan_polygon = "#F97B08"
+scan_leg = "#4C2C0F"
+track = "#2A4F73"
+pasifik = "#F97B08"
+agent = "#2FD07B"
+vehicle_stale = "#999998"
+assignment_line = "#FBB21C"
+label = "#E0E0E0"
+scale_bar = "#999998"
+
+# One colour per target state, so the map answers "what is happening to that
+# person" without reading anything. Keys are the state codes in payloads.toml.
+[map.target_colors]
+candidate = "#999998"
+confirmed = "#FBB21C"
+assigned = "#4DA6FF"
+delivering = "#4DA6FF"
+delivered = "#2FD07B"
+failed = "#FF4D5E"
+vetoed = "#4F4D4B"
+
+[map.sizes]
+vehicle_marker_radius = 9
+vehicle_heading_length = 18
+target_marker_radius = 7
+selected_target_ring = 13
+track_width = 2
+polygon_width = 2
+leg_width = 1
+assignment_width = 1
+label_offset = 12
+# Padding kept around the fitted content, as a fraction of the shorter side.
+fit_margin = 0.12
+# Wheel zoom step and the range the operator can zoom into.
+zoom_step = 1.2
+zoom_min = 0.05
+zoom_max = 40.0
+# Spacing of the reference grid in metres, and the scale bar's target width.
+grid_spacing_metres = 50.0
+scale_bar_width_pixels = 120

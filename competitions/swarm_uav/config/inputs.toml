@@ -1,0 +1,23 @@
+# Command input validation and spinbox ranges.
+
+[validation]
+# Takeoff altitude and formation distance must be strictly greater than these.
+min_takeoff_altitude = 0.0
+min_formation_distance = 0.0
+# V and inverse-V formations reject angles below this (degrees).
+min_formation_angle = 10.0
+
+# Ranges for the command input spinboxes (applied on top of the .ui defaults).
+[input_ranges]
+move_axis_min = -100.0
+move_axis_max = 100.0
+takeoff_altitude_max = 100.0
+# A plan GO TO carries a change in height, so it climbs or descends.
+altitude_change_min = -100.0
+altitude_change_max = 100.0
+formation_distance_max = 50.0
+formation_angle_min = 0.0
+formation_angle_max = 180.0
+rotation_min = -180.0
+rotation_max = 180.0
+spinbox_decimals = 1

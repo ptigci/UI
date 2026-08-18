@@ -1,0 +1,477 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>DronePanelForm</class>
+ <widget class="QWidget" name="DronePanelForm">
+  <layout class="QHBoxLayout" name="panellayout">
+   <item>
+    <layout class="QVBoxLayout" name="buttonslayout">
+     <item>
+      <layout class="QGridLayout" name="armlayout" rowstretch="0,1,0,0,0">
+       <item row="0" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="camheaderlayout" stretch="1,0">
+         <item>
+          <widget class="QLabel" name="camlbl">
+           <property name="role" stdset="0">
+            <string>heading</string>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>16777215</width>
+             <height>20</height>
+            </size>
+           </property>
+           <property name="autoFillBackground">
+            <bool>true</bool>
+           </property>
+           <property name="text">
+            <string>CAM</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QPushButton" name="camtogglebtn">
+           <property name="scale" stdset="0">
+            <string>icon</string>
+           </property>
+           <property name="minimumSize">
+            <size>
+             <width>44</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="maximumSize">
+            <size>
+             <width>44</width>
+             <height>24</height>
+            </size>
+           </property>
+           <property name="toolTip">
+            <string>Remove this camera output from the UI, or add it back.</string>
+           </property>
+           <property name="text">
+            <string>x</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+       <item row="1" column="0" colspan="2">
+        <widget class="CameraView" name="cam">
+         <property name="sizePolicy">
+          <sizepolicy hsizetype="Expanding" vsizetype="Expanding">
+           <horstretch>0</horstretch>
+           <verstretch>0</verstretch>
+          </sizepolicy>
+         </property>
+         <property name="minimumSize">
+          <size>
+           <width>320</width>
+           <height>200</height>
+          </size>
+         </property>
+         <property name="text">
+          <string>Camera Module Not Available</string>
+         </property>
+         <property name="alignment">
+          <set>Qt::AlignCenter</set>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="0">
+        <widget class="QPushButton" name="armbtn">
+         <property name="variant" stdset="0">
+          <string>caution</string>
+         </property>
+         <property name="text">
+          <string>ARM</string>
+         </property>
+        </widget>
+       </item>
+       <item row="2" column="1">
+        <widget class="QPushButton" name="disarmbtn">
+         <property name="text">
+          <string>DISARM</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="0">
+        <widget class="QPushButton" name="farmbtn">
+         <property name="variant" stdset="0">
+          <string>caution</string>
+         </property>
+         <property name="text">
+          <string>FORCE ARM</string>
+         </property>
+        </widget>
+       </item>
+       <item row="3" column="1">
+        <widget class="QPushButton" name="fdisarmbtn">
+         <property name="text">
+          <string>FORCE DISARM</string>
+         </property>
+        </widget>
+       </item>
+       <item row="4" column="0" colspan="2">
+        <layout class="QHBoxLayout" name="takeofflayout" stretch="5,0,0,0,5">
+         <item>
+          <widget class="QPushButton" name="takeoffbtn">
+           <property name="text">
+            <string>TAKEOFF</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QLabel" name="altlabel">
+           <property name="role" stdset="0">
+            <string>readoutLabel</string>
+           </property>
+           <property name="text">
+            <string>alt:</string>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <widget class="QDoubleSpinBox" name="altSpinBox">
+           <property name="minimum">
+            <double>-150.000000000000000</double>
+           </property>
+          </widget>
+         </item>
+         <item>
+          <spacer name="takeoffspacer">
+           <property name="orientation">
+            <enum>Qt::Horizontal</enum>
+           </property>
+           <property name="sizeHint" stdset="0">
+            <size>
+             <width>40</width>
+             <height>20</height>
+            </size>
+           </property>
+          </spacer>
+         </item>
+         <item>
+          <widget class="QPushButton" name="landbtn">
+           <property name="text">
+            <string>LAND</string>
+           </property>
+          </widget>
+         </item>
+        </layout>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="movelayout" stretch="5,0,0,0,0,0,0,0">
+       <item>
+        <widget class="QPushButton" name="movebtn">
+         <property name="text">
+          <string>MOVE</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="movespacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="QLabel" name="xlabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>x:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="xSpinBox">
+         <property name="minimum">
+          <double>-150.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="ylabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="ySpinBox">
+         <property name="minimum">
+          <double>-150.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="zlabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>z:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QDoubleSpinBox" name="zSpinBox">
+         <property name="minimum">
+          <double>-150.000000000000000</double>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QPushButton" name="freebtn">
+       <property name="text">
+        <string>FREE</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="taubtn">
+       <property name="text">
+        <string>CALIBRATE TAU</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="latencybtn">
+       <property name="text">
+        <string>CALIBRATE LATENCY</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="emergencybtn">
+       <property name="variant" stdset="0">
+        <string>danger</string>
+       </property>
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>EMERGENCY</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="generallayout">
+     <item>
+      <layout class="QHBoxLayout" name="headerlayout">
+       <item>
+        <widget class="QLabel" name="namelbl">
+         <property name="role" stdset="0">
+          <string>heading</string>
+         </property>
+         <property name="font">
+          <font>
+           <bold>true</bold>
+          </font>
+         </property>
+         <property name="text">
+          <string>DRONE</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="headerspacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+       <item>
+        <widget class="ConnectionStatusLabel" name="connlbl">
+         <property name="text">
+          <string>last message: no data</string>
+         </property>
+        </widget>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <layout class="QHBoxLayout" name="positionlayout">
+       <item>
+        <widget class="QLabel" name="xposlabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>x:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="xlbl">
+         <property name="role" stdset="0">
+          <string>readout</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="yposlabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>y:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="ylbl">
+         <property name="role" stdset="0">
+          <string>readout</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="zposlabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>z:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="zlbl">
+         <property name="role" stdset="0">
+          <string>readout</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="vposlabel">
+         <property name="role" stdset="0">
+          <string>readoutLabel</string>
+         </property>
+         <property name="text">
+          <string>v:</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QLabel" name="vlbl">
+         <property name="role" stdset="0">
+          <string>readout</string>
+         </property>
+         <property name="text">
+          <string/>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <spacer name="positionspacer">
+         <property name="orientation">
+          <enum>Qt::Horizontal</enum>
+         </property>
+         <property name="sizeHint" stdset="0">
+          <size>
+           <width>40</width>
+           <height>20</height>
+          </size>
+         </property>
+        </spacer>
+       </item>
+      </layout>
+     </item>
+     <item>
+      <widget class="QLabel" name="terminallabel">
+       <property name="role" stdset="0">
+        <string>heading</string>
+       </property>
+       <property name="maximumSize">
+        <size>
+         <width>16777215</width>
+         <height>30</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <bold>true</bold>
+        </font>
+       </property>
+       <property name="text">
+        <string>TERMINAL</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="TerminalView" name="terminal">
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>100</height>
+        </size>
+       </property>
+       <property name="font">
+        <font>
+         <family>Courier New</family>
+        </font>
+       </property>
+       <property name="readOnly">
+        <bool>true</bool>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <customwidgets>
+  <customwidget>
+   <class>CameraView</class>
+   <extends>QLabel</extends>
+   <header>widgets.camera_view</header>
+  </customwidget>
+  <customwidget>
+   <class>TerminalView</class>
+   <extends>QTextEdit</extends>
+   <header>widgets.terminal_view</header>
+  </customwidget>
+  <customwidget>
+   <class>ConnectionStatusLabel</class>
+   <extends>QLabel</extends>
+   <header>widgets.connection_status</header>
+  </customwidget>
+ </customwidgets>
+ <resources/>
+ <connections/>
+</ui>

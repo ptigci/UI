@@ -1,0 +1,20 @@
+# Day-to-day settings for the Uluslararası İHA interface. This is the file to
+# edit between bench sessions; the other files in this folder hold the stable
+# constants. Broker address and log level are in the shared config/ folder.
+
+[mission]
+# Shown on the mission bar until the first status message arrives.
+unknown_state_text = "NO DATA"
+# A command counts as unacknowledged after this long, and the bar says so.
+command_ack_timeout_ms = 5000
+# Vehicles that stop reporting for this long are drawn as stale everywhere.
+vehicle_stale_after_ms = 3000
+
+[map]
+# Where the map centres before any vehicle has reported a position.
+default_latitude = 41.104
+default_longitude = 29.024
+# Metres across the shorter side of the map when there is nothing to fit to.
+default_span_metres = 400.0
+# Positions kept per vehicle for the flown track.
+track_length = 600

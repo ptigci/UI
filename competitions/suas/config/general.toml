@@ -1,0 +1,65 @@
+# Day-to-day switches. This is the file to edit at the flight line; every other
+# file under config/ holds stable tuning. Sections here deep-merge with the
+# module files, so a key lives in exactly one file.
+
+[mission]
+# Which flight line we were assigned at check-in: "runway_1" or "runway_2".
+# It picks the search boundary, the waypoint lap file and the survey grid.
+runway_profile = "runway_1"
+
+[interface]
+# The delivery panel: the two presses that drive a winch drop, the countdown to
+# a winged one, and the two ways of ending the test.
+#
+# It is for test flights. In a scored mission the aircraft finishes the scan and
+# delivers on what it found with nobody pressing anything -- 3.3 pays 200 points
+# for exactly that -- so the panel comes off the screen and the map gets its
+# room back. The aircraft's half of the same switch is `operator_driven_delivery`
+# in ../SUAS/vtol/config/testing.toml; turning one off without the other leaves
+# either buttons that do nothing or an aircraft waiting for a press that cannot
+# be made.
+drop_panel_enabled = true
+
+# The live picture from the SIYI A8 mini, and the button that starts and stops
+# the camera's own recording. Unlike the delivery panel this stays on for the
+# scored mission — watching what the camera sees is how the operator knows the
+# search is working, and 3.3 does not object to looking at things.
+#
+# The picture arrives from the ground services, which is the only thing that
+# ever receives the aircraft's video. Nothing here opens a stream.
+camera_panel_enabled = true
+
+# How long a frame stays on the screen before the panel decides the feed has
+# stopped. The ground services publish about ten a second, so anything past a
+# second or two means the picture is not live any more — and a still frame that
+# looks live is the worst thing this panel could show.
+camera_stale_seconds = 2.0
+
+[map]
+# The only source of map imagery. No network path exists in the map widget.
+# Build this before travelling and verify it with networking disabled.
+tile_file = "assets/tiles/skyway_range.mbtiles"
+
+[safety]
+# Direct MAVLink to the autopilot, for RTL and flight termination only.
+#
+# A serial port is the competition setting: "COM7" on Windows, "/dev/ttyUSB0"
+# on Linux, an RFD900x on the other end. Appendix B requires the GCS to be able
+# to terminate the flight and 5.3.5 requires that capability to survive
+# anything else failing, which is why it is a second radio on a second band and
+# why it must still work with the Raspberry Pi powered off.
+#
+# A network endpoint is the TESTING setting -- "udp:0.0.0.0:14550" to listen
+# for whatever forwards MAVLink to this machine, or "tcp:127.0.0.1:5760" to
+# talk to SITL directly. Convenient, and not compliant: MAVLink arriving over
+# the Rocket M2 shares one radio with the mission bus and the video, and if it
+# is forwarded by the Pi then the Pi is in the safety path. Either way a single
+# failure takes out both links, which is the arrangement Appendix B exists to
+# forbid. Fine for a bench day, not for the flight line.
+#
+# The link being down is why the ribbon says so: nothing is listening on this
+# endpoint.
+mavlink_endpoint = "COM7"
+
+# Ignored for a network endpoint.
+mavlink_baud_rate = 57600

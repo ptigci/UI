@@ -1,0 +1,13 @@
+# Log formats. The log level lives in config/general.toml.
+
+[logging]
+# colorlog format — shows the source file and line of every message
+format = "\n%(log_color)s%(asctime)s - [%(levelname)s] - %(filename)s line %(lineno)d\nOUTPUT: %(message)s"
+date_format = "%Y-%m-%d %H:%M:%S"
+
+[logging.colors]
+DEBUG = "cyan"
+INFO = "green"
+WARNING = "yellow"
+ERROR = "red"
+CRITICAL = "red,bg_white"

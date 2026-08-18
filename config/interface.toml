@@ -1,0 +1,61 @@
+# Window and widget constants shared by every competition. Anything only one
+# competition needs lives in competitions/<name>/config/.
+
+[ui]
+window_title = "Cezeri GCS"
+terminal_time_format = "%H:%M:%S"
+terminal_max_lines = 500
+position_decimals = 2
+camera_unavailable_text = "Camera Module Not Available"
+# Texts for the buttons that remove/re-add a camera output from the UI.
+camera_remove_text = "x"
+camera_add_text = "+"
+# MQTT broker indicator in the status bar.
+broker_connected_text = "Broker: connected"
+broker_disconnected_text = "Broker: disconnected"
+
+[connection_monitor]
+# How often the "time since last message" labels refresh (milliseconds).
+refresh_interval_ms = 100
+# Above this age the connection label turns red (milliseconds).
+stale_after_ms = 2000
+# Shown before the first message of a session has arrived.
+no_data_text = "no data"
+
+# Detection review: the approve / deny browser shared by the competitions that
+# let the operator confirm what the aircraft found before anything is sent out.
+[detection_review]
+title = "DETECTION REVIEW"
+no_frames_text = "No detections waiting"
+# Detections kept in the browser before the oldest is dropped.
+max_frames = 50
+# Text of the two verdict buttons and the queue counter.
+approve_text = "APPROVE"
+reject_text = "DENY"
+counter_format = "DETECTION {index} / {count}"
+# Shown in place of a metadata value the detection message did not carry.
+missing_value_text = "-"
+# One line of metadata under the image. Everything the operator needs to judge
+# the detection before approving it.
+details_format = "{label}   conf {confidence}   |   lat {latitude}  lon {longitude}  alt {altitude} m   |   {timestamp}"
+confidence_decimals = 2
+coordinate_decimals = 6
+altitude_decimals = 1
+# Shown next to the queue counter while detections are waiting.
+pending_format = "{count} waiting"
+# Minimum height of the image area, so a detection is never a thumbnail. It is
+# a minimum, not a size — the panel gives the image every pixel the column can
+# spare. Raising it stops the right-hand column fitting on a 768px screen.
+image_min_height = 140
+
+# Keys the detection messages carry. The panel reads these and nothing else;
+# the rest of the payload is echoed back with the verdict untouched.
+[detection_review.payload_keys]
+detection_id = "detection_id"
+label = "label"
+confidence = "confidence"
+latitude = "lat"
+longitude = "lon"
+altitude = "alt"
+timestamp = "timestamp_utc"
+image = "image"

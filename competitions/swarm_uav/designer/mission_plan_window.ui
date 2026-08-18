@@ -1,0 +1,121 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<ui version="4.0">
+ <class>MissionPlanDialog</class>
+ <widget class="QDialog" name="MissionPlanDialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>620</width>
+    <height>520</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Upload mission</string>
+  </property>
+  <layout class="QVBoxLayout" name="planlayout">
+   <item>
+    <widget class="QLabel" name="titlelabel">
+     <property name="role" stdset="0">
+      <string>pageTitle</string>
+     </property>
+     <property name="text">
+      <string>MISSION PLAN</string>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="hintlabel">
+     <property name="role" stdset="0">
+      <string>hint</string>
+     </property>
+     <property name="text">
+      <string>GO TO coordinates are metres from where the swarm stands when the mission starts: north, east, and altitude above it — the same frame the telemetry blocks show.</string>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QListWidget" name="planlist"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="listbuttonlayout">
+     <item>
+      <widget class="QPushButton" name="upbtn">
+       <property name="text">
+        <string>MOVE UP</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="downbtn">
+       <property name="text">
+        <string>MOVE DOWN</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="removebtn">
+       <property name="text">
+        <string>REMOVE</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="clearbtn">
+       <property name="text">
+        <string>CLEAR</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+   <item>
+    <layout class="QVBoxLayout" name="editorlayout"/>
+   </item>
+   <item>
+    <layout class="QHBoxLayout" name="dialogbuttonlayout">
+     <item>
+      <widget class="QPushButton" name="cancelbtn">
+       <property name="scale" stdset="0">
+        <string>large</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>34</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>CANCEL</string>
+       </property>
+      </widget>
+     </item>
+     <item>
+      <widget class="QPushButton" name="savebtn">
+       <property name="scale" stdset="0">
+        <string>large</string>
+       </property>
+       <property name="variant" stdset="0">
+        <string>primary</string>
+       </property>
+       <property name="minimumSize">
+        <size>
+         <width>0</width>
+         <height>34</height>
+        </size>
+       </property>
+       <property name="text">
+        <string>SAVE PLAN</string>
+       </property>
+      </widget>
+     </item>
+    </layout>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

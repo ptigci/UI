@@ -1,0 +1,135 @@
+# Texts, sizes and refresh rates of the Uluslararası İHA interface. Colours of
+# anything drawn on the map live in map.toml; the window stylesheet lives in
+# designer/main_window.ui.
+
+[interface]
+# Stands in for anything a vehicle or the ground station has not reported yet.
+# A blank is honest; a zero would be a lie.
+missing_value_text = "—"
+
+# Mission bar. Each field is a fixed caption over a value, so the bar keeps its
+# shape as the numbers change.
+mission_state_prefix = "MISSION"
+scan_caption = "SCAN"
+scan_progress_format = "{percent:.0f}%   leg {legs_done}/{legs_total}"
+scan_waiting_text = "—"
+elapsed_caption = "ELAPSED"
+elapsed_format = "{minutes:02d}:{seconds:02d}"
+ack_caption = "LAST COMMAND"
+ack_none_text = "—"
+dispatch_text = "SEND DRONES"
+hold_text = "HOLD"
+resume_text = "RESUME"
+abort_text = "ABORT"
+recording_on_text = "REC"
+recording_off_text = "NOT RECORDING"
+record_text = "RECORD"
+record_stop_text = "STOP RECORDING"
+# Shown while a mission command waits for the vehicles to acknowledge it.
+ack_pending_format = "{command} {acknowledged}/{expected} acknowledged"
+ack_complete_format = "{command} acknowledged by all"
+ack_timeout_format = "{command} NOT acknowledged by {missing}"
+# Every mission command is confirmed before anything is published. The dispatch
+# dialog names its one precondition, because the ground station refuses a
+# dispatch while the Pasifik is still flying and the refusal is only visible as
+# nothing happening.
+dispatch_confirm_title = "Send the drones?"
+dispatch_confirm_question = "Every approved target is assigned to an agent and the swarm takes off. The Pasifik must already be on the ground."
+hold_confirm_title = "Hold every agent?"
+hold_confirm_question = "All agents stop and hold position where they are."
+abort_confirm_title = "Abort the mission?"
+abort_confirm_question = "Every vehicle stops what it is doing, returns and lands. Deliveries in progress are lost."
+
+# Vehicle cards.
+pasifik_title = "PASIFIK"
+agent_title_format = "AGENT {agent_id}"
+card_state_format = "state: {state}"
+card_mode_format = "mode: {mode}"
+card_armed_text = "ARMED"
+card_disarmed_text = "DISARMED"
+card_battery_format = "{percent:.0f}%  {voltage:.1f} V"
+card_position_format = "{latitude:.6f}, {longitude:.6f}"
+card_altitude_format = "alt {altitude:.1f} m AGL"
+card_speed_format = "gs {ground_speed:.1f} m/s"
+card_airspeed_format = "as {airspeed:.1f} m/s"
+card_gps_format = "{gps_fix} / {rtk_status}"
+card_target_format = "target: {target_id}"
+card_payload_format = "payload: {payload_state}"
+card_no_target_text = "target: —"
+card_stale_format = "no data for {seconds:.1f} s"
+# Battery percentage below which the card turns into a warning.
+battery_warning_percent = 35.0
+battery_critical_percent = 20.0
+
+# Target panel.
+target_panel_title = "TARGETS"
+target_confirmed_title = "CONFIRMED"
+target_candidate_title = "CANDIDATES"
+target_row_format = "{target_id}  {label}  {confidence}  {position}"
+target_confidence_format = "{value:.0%}"
+target_position_format = "{latitude:.5f}, {longitude:.5f}"
+target_state_format = "{state}"
+target_agent_format = "→ {agent_id}"
+target_no_agent_text = "unassigned"
+target_empty_text = "No targets yet"
+veto_text = "VETO"
+requeue_text = "RE-QUEUE"
+veto_confirm_title = "Drop this target?"
+veto_confirm_question = "Target {target_id} is removed from the pool. No agent will fly to it."
+
+# Operator log under the map.
+log_panel_title = "MISSION LOG"
+
+# Link health panel.
+link_panel_title = "LINK HEALTH"
+link_row_format = "{name}   {latency}   {loss}   {age}"
+link_latency_format = "{value:.0f} ms"
+link_loss_format = "{value:.0f}% loss"
+link_age_format = "{last_seen_ms:.0f} ms ago"
+link_no_data_text = "no data"
+link_empty_text = "No link reports yet"
+tracker_locked_format = "tracker: locked ({error_deg:.1f}°)"
+tracker_lost_text = "tracker: NO LOCK"
+tracker_unknown_text = "tracker: —"
+# A link is a warning above these; both come from the ground station's reports.
+link_latency_warning_ms = 250.0
+link_loss_warning_percent = 5.0
+
+# Detection review: what the operator's verdict means, spelled out on screen.
+detection_hint_text = "APPROVE sends this location to the swarm. DENY drops the detection."
+detection_approved_format = "Approved {label} at {latitude:.6f}, {longitude:.6f} — sent to the swarm."
+detection_rejected_format = "Denied {label} ({detection_id})."
+detection_missing_location_text = "This detection carries no coordinate, so nothing can be sent. Deny it."
+
+# How often the elapsed clock, staleness and ack timers refresh.
+refresh_interval_ms = 200
+# Widths that keep the three columns readable on the mission laptop.
+side_column_width = 320
+detection_column_width = 420
+# Shortest either target list is allowed to get. Qt's own minimum for a list is
+# taller than this, and two of them plus the detection review pushed the right
+# column past the height of a 768px laptop screen.
+target_list_min_height = 64
+
+# How the window divides itself up. The map is the part worth the space.
+[interface.layout]
+vehicle_list_stretch = 3
+link_health_stretch = 1
+map_stretch = 4
+log_stretch = 1
+target_panel_stretch = 3
+detection_panel_stretch = 4
+left_column_stretch = 1
+centre_column_stretch = 3
+right_column_stretch = 2
+
+# Entries of the target list's sort picker, in the order they appear.
+[interface.target_sort_labels]
+priority = "by priority"
+confidence = "by confidence"
+target_id = "by id"
+
+[mission]
+# While the mission is in one of these states agents are in the air, so the
+# ABORT button is the loudest thing on the bar.
+active_states = ["SCANNING", "DELIVERING", "RETURNING"]

@@ -1,0 +1,157 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!-- Structure only. Text, sizes and spacing are set in windows/selection_window.py
+     from config/selection.toml and the shared design tokens. -->
+<ui version="4.0">
+ <class>Dialog</class>
+ <widget class="QDialog" name="Dialog">
+  <property name="geometry">
+   <rect>
+    <x>0</x>
+    <y>0</y>
+    <width>640</width>
+    <height>420</height>
+   </rect>
+  </property>
+  <property name="windowTitle">
+   <string>Competition Selection</string>
+  </property>
+  <layout class="QVBoxLayout" name="dialoglayout">
+   <item>
+    <widget class="QLabel" name="titlelabel">
+     <property name="role" stdset="0">
+      <string>pageTitle</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QLabel" name="subtitlelabel">
+     <property name="role" stdset="0">
+      <string>hint</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+     <property name="wordWrap">
+      <bool>true</bool>
+     </property>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="competitioncard">
+     <property name="surface" stdset="0">
+      <string>panel</string>
+     </property>
+     <layout class="QHBoxLayout" name="competitionlayout">
+      <item>
+       <widget class="QPushButton" name="btn_suru">
+        <property name="scale" stdset="0">
+         <string>tile</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_uluslararasi">
+        <property name="scale" stdset="0">
+         <string>tile</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QPushButton" name="btn_suas">
+        <property name="scale" stdset="0">
+         <string>tile</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="checkable">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QFrame" name="countscard">
+     <property name="surface" stdset="0">
+      <string>panel</string>
+     </property>
+     <layout class="QGridLayout" name="countslayout">
+      <item row="0" column="0" colspan="2">
+       <widget class="QLabel" name="countsheading">
+        <property name="role" stdset="0">
+         <string>heading</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="0">
+       <widget class="QLabel" name="dronecountlabel">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="1" column="1">
+       <widget class="QSpinBox" name="dronecountSpinBox">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="0">
+       <widget class="QLabel" name="vtolcountlabel">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item row="2" column="1">
+       <widget class="QSpinBox" name="vtolcountSpinBox">
+        <property name="minimum">
+         <number>1</number>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
+    <widget class="QPushButton" name="continuebtn">
+     <property name="enabled">
+      <bool>false</bool>
+     </property>
+     <property name="variant" stdset="0">
+      <string>primary</string>
+     </property>
+     <property name="scale" stdset="0">
+      <string>large</string>
+     </property>
+     <property name="text">
+      <string/>
+     </property>
+    </widget>
+   </item>
+  </layout>
+ </widget>
+ <resources/>
+ <connections/>
+</ui>

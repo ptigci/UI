@@ -1,0 +1,140 @@
+# The design tokens the whole interface is drawn from. Every colour, size and
+# duration on screen comes from this file — nothing is written into a widget.
+#
+# To rebrand the application, change [theme.brand] and nothing else: the hover,
+# pressed, focus and tinted-fill shades are all mixed from the accent at load
+# time. The same goes for the status colours; their soft fills are derived too.
+
+[theme.brand]
+# The team colour. Everything interactive is built from it. Hover and pressed
+# are mixed from it, and the pressed shade lands on the team's deeper orange.
+accent = "#F97B08"
+# Text and icons drawn on top of a filled accent surface.
+on_accent = "#000000"
+
+[theme.surface]
+# The elevation ladder, darkest first. A widget sits higher by moving up one
+# step, never by growing a heavier border. Neutral black rather than tinted:
+# orange on a blue-grey ground reads muddy, and the operator is looking at this
+# screen in daylight.
+sunken = "#080808"
+base = "#101010"
+card = "#171717"
+raised = "#202020"
+overlay = "#2A2A2A"
+line = "#333333"
+line_strong = "#4F4D4B"
+
+[theme.text]
+primary = "#FFFFFF"
+secondary = "#E0E0E0"
+# The team grey. Captions and headings are read across a field in daylight, so
+# muted is as light as the word allows.
+muted = "#999998"
+
+[theme.status]
+# The five things the operator needs to tell apart at a glance.
+ok = "#2FD07B"
+caution = "#FBB21C"
+critical = "#FF4D5E"
+info = "#4DA6FF"
+idle = "#999998"
+
+[theme.mix]
+# How the derived shades are mixed, as a fraction from 0 to 1.
+hover_lift = 0.14
+pressed_drop = 0.16
+# A status colour tinted into a card background, for filled chips and buttons.
+soft_fill = 0.14
+soft_line = 0.36
+# How far a disabled colour fades towards the surface behind it. Kept shallow:
+# a disabled control still has to be readable, or the operator cannot tell
+# TERMINATE from RTL until one of them lights up.
+disabled_fade = 0.45
+# Alpha of the ring drawn around a focused control.
+focus_ring_alpha = 0.45
+
+[theme.font]
+family = "'Inter', 'Segoe UI Variable Text', 'Segoe UI', Roboto, sans-serif"
+# Numbers that change while the operator is reading them are always monospaced,
+# so the digits stop dancing sideways.
+mono_family = "'JetBrains Mono', 'Cascadia Mono', Consolas, monospace"
+
+[theme.font.size]
+display = 30
+title = 20
+heading = 15
+body = 13
+label = 12
+caption = 11
+micro = 10
+
+[theme.font.weight]
+regular = 400
+medium = 500
+semibold = 600
+bold = 700
+
+[theme.font.tracking]
+# Letter spacing in pixels. Qt ignores letter-spacing in a stylesheet, so these
+# are applied through QFont — see theme/fonts.py.
+eyebrow = 1.6
+display = 1.0
+
+[theme.space]
+xs = 4
+sm = 8
+md = 12
+lg = 16
+xl = 24
+xxl = 32
+
+[theme.radius]
+sm = 4
+md = 6
+lg = 10
+pill = 999
+
+[theme.border]
+hairline = 1
+# The coloured strip down the left edge of a card that carries its state.
+rail = 3
+focus = 2
+
+[theme.control]
+height = 32
+height_large = 44
+# A tile is a button big enough to be a choice rather than a form field —
+# the "pick one of these" controls on the startup screen.
+tile_width = 168
+tile_height = 76
+scrollbar = 10
+# The step buttons on a number field, and the arrow drawn inside one.
+spin_button = 18
+spin_arrow = 9
+# Width of the accent underline under the selected tab.
+tab_underline = 2
+# The status dot, and the soft ring drawn around it.
+dot = 9
+dot_halo = 4
+
+[theme.elevation]
+# Dark interfaces read elevation from surface colour first; the shadow is only
+# there to lift things that genuinely float. Turn it off on a slow machine.
+enabled = true
+blur = 28
+offset_y = 8
+alpha = 0.5
+# What a card grows into while the pointer is over it.
+hover_blur = 20
+hover_offset_y = 4
+hover_alpha = 0.38
+
+[theme.motion]
+# Milliseconds. Short enough to feel like a response, not a transition.
+fast = 120
+base = 180
+slow = 260
+# A status dot breathing while something is critical, and how far it dims.
+pulse = 900
+pulse_depth = 0.45

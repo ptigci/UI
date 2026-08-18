@@ -1,0 +1,201 @@
+# Texts, formats, sizes and colours. Nothing here changes behaviour.
+
+[interface]
+missing_value_text = "--"
+refresh_interval_ms = 200
+
+# The judge reads this row, so it is specified in knots and feet AGL (3.0.6).
+# Each reading is a fixed caption above a formatted value, which is what keeps
+# the row aligned as the numbers change width.
+ribbon_mode_caption = "MODE"
+ribbon_mode_format = "{mode}"
+ribbon_armed_caption = "ARM STATE"
+ribbon_armed_text = "ARMED"
+ribbon_disarmed_text = "DISARMED"
+ribbon_ground_speed_caption = "GROUND SPEED"
+ribbon_ground_speed_format = "{knots:.0f} kt"
+ribbon_altitude_caption = "ALTITUDE AGL"
+ribbon_altitude_format = "{feet:.0f} ft"
+ribbon_battery_caption = "BATTERY"
+ribbon_battery_format = "{voltage:.1f} V  {percent:.0f}%"
+ribbon_gps_caption = "GPS"
+ribbon_gps_format = "{fix}  {satellites} sats"
+ribbon_waypoint_radius_caption = "WP RADIUS"
+ribbon_waypoint_radius_format = "{feet:.0f} ft"
+ribbon_boundary_caption = "BOUNDARY"
+ribbon_boundary_format = "{feet:.0f} ft"
+ribbon_boundary_outside_text = "OUTSIDE"
+ribbon_home_caption = "HOME"
+ribbon_home_format = "{miles:.2f} mi"
+ribbon_safety_link_caption = "MAVLINK"
+ribbon_mission_link_caption = "MQTT"
+ribbon_link_up_text = "UP"
+ribbon_link_down_text = "DOWN"
+
+# 3.1.1 Mission Time. The clock counts up and never hides.
+clock_caption = "MISSION ELAPSED"
+clock_format = "{minutes:02d}:{seconds:02d} / {limit_minutes:02d}:{limit_seconds:02d}"
+clock_phase_caption = "PHASE"
+clock_phase_format = "{phase}"
+clock_phase_unknown_text = "waiting"
+clock_overrun_format = "OVER BY {minutes:02d}:{seconds:02d}"
+clock_start_text = "START CLOCK"
+clock_running_text = "CLOCK RUNNING"
+
+# 3.2.3 laps.
+lap_panel_title = "LAPS"
+lap_marks_caption = "COMPLETED"
+lap_progress_caption = "WAYPOINT"
+lap_progress_format = "{index}/{total}   {feet:.0f} ft"
+lap_progress_waiting_text = "no waypoint data"
+lap_auto_held_text = "AUTO held"
+lap_auto_lost_text = "AUTO LOST"
+lap_points_format = "{laps} laps = {points:.0f} pts"
+lap_next_lap_format = "one more = +{points:.0f}"
+lap_locked_text = "LAPS LOCKED"
+# One mark per lap: done, being flown, still available.
+lap_done_mark = "✔"
+lap_current_mark = "▶"
+lap_todo_mark = "·"
+lap_invalid_format = "Lap {lap} invalidated - {reason}"
+
+safety_panel_title = "SAFETY"
+safety_return_text = "RTL"
+safety_terminate_text = "TERMINATE"
+safety_hold_hint_text = "hold to confirm"
+safety_sent_text = "SENT"
+safety_acknowledged_text = "ACKNOWLEDGED"
+safety_timeout_text = "NO ACKNOWLEDGEMENT"
+safety_link_down_text = "SAFETY LINK DOWN"
+
+# The drop test panel. It is only on the screen for a delivery test flight --
+# a scored mission delivers without being asked, and the panel is switched off
+# in general.toml so nothing on the judge's screen implies otherwise.
+drop_panel_title = "DELIVERY"
+drop_countdown_caption = "METRES TO RELEASE"
+drop_countdown_format = "{metres:.0f} m"
+drop_countdown_ready_text = "RELEASING"
+drop_target_caption = "TARGET"
+drop_target_format = "{target_class} #{track_id}"
+drop_geometry_caption = "THROW / NOSE OFF"
+drop_geometry_format = "{throw:.0f} m  /  {heading:.0f}°"
+drop_waiting_text = "No delivery being set up."
+
+# The two presses that drive a winch delivery, and the two that end the test.
+# RTL and LAND are the same MAVLink path as the safety panel's RTL -- they are
+# repeated here so the sequence reads in the order it is flown.
+drop_goto_text = "GO TO DROP ZONE"
+drop_release_text = "RELEASE"
+drop_return_text = "RTL"
+drop_land_text = "LAND"
+drop_hold_hint_text = "hold to confirm"
+
+# What the aircraft said about the last press, which is not the same as what
+# the press asked for. A refusal here is normal: it means the mission was not
+# at a point where the step made sense.
+drop_command_sent_text = "sent, waiting for the aircraft"
+drop_command_accepted_text = "accepted"
+drop_command_rejected_format = "refused - {reason}"
+drop_command_timeout_text = "no answer from the aircraft"
+
+# The winged release is never commanded, so its buttons do nothing. The panel
+# says so rather than offering presses that are silently dropped.
+drop_watch_only_text = "Winged release: the aircraft is not commanded. Watching the mission."
+
+# The live picture, and the camera's own recording.
+camera_panel_title = "CAMERA"
+camera_no_signal_text = "NO PICTURE"
+camera_waiting_text = "WAITING FOR THE AIRCRAFT"
+camera_record_text = "START RECORDING"
+camera_stop_text = "STOP RECORDING"
+camera_hold_hint_text = "hold to confirm"
+camera_recording_text = "REC"
+camera_idle_text = "NOT RECORDING"
+camera_unknown_text = "UNKNOWN"
+camera_command_sent_text = "sent, waiting for the camera"
+camera_command_rejected_format = "refused - {reason}"
+
+map_tiles_missing_text = "MAP TILES MISSING"
+map_recentre_text = "RE-CENTRE"
+map_follow_on_text = "FOLLOW"
+map_follow_off_text = "FREE"
+
+[interface.detection]
+# The line under the browser. §3.6.3 does not score detection, only where the
+# payload lands and which target it lands near -- so the operator is judging
+# the picture, not the number beside it.
+hint_text = "Look at the crop, not the confidence. Deny blocks this location."
+
+# Refused approvals. A track with no coordinate cannot be flown to, and a track
+# of an unknown class has no station bound to it, so approving either would
+# promise a delivery that can never happen.
+missing_location_text = "No coordinate on this detection -- nothing to fly to."
+unknown_class_text = "Unknown class: no payload station is bound to it."
+
+# The class the aircraft gives a detection it could not name.
+unknown_class_name = "unknown"
+
+# Who the verdict is recorded against in the mission log.
+operator_id = "gcs"
+
+[interface.layout]
+map_stretch = 4
+# The detection browser is the only thing in the side column that grows:
+# the lap tracker and the safety panel take the height they need, and
+# everything left over goes to the crop the operator is judging.
+detection_column_stretch = 1
+side_column_stretch = 1
+# Wide enough for the detection browser, which is the widest thing in the
+# column. Narrower than its minimum and Qt squeezes the panel below what it
+# can draw, and its contents overlap each other -- which is what a 340 px
+# column did once the review browser moved in.
+side_column_width = 470
+# Two rows of captioned readings. Everything the row does not take goes to the
+# map, so this is the smallest height that still fits them.
+ribbon_minimum_height = 96
+ribbon_columns = 6
+clock_minimum_height = 72
+# The live picture in the side column. Tall enough to see what the camera is
+# pointing at, short enough that the detection browser under it still fits on a
+# laptop screen. The preview is 640 px wide (SUAS/computer/config/video.toml)
+# and 16:9, so this is about what it wants at the column's width.
+video_minimum_height = 240
+
+[map]
+default_latitude = 36.2155
+default_longitude = -96.0075
+default_zoom = 16
+minimum_zoom = 12
+maximum_zoom = 19
+tile_size_pixels = 256
+tile_cache_limit = 600
+fit_margin_fraction = 0.12
+zoom_step = 1.0
+track_length = 400
+
+# The map paints itself, so a stylesheet cannot reach it. These mirror the
+# design tokens in UI/config/theme.toml — a boundary is the critical colour, a
+# waypoint the info colour, a runway the ok colour. Change them together.
+[map.colors]
+background = "#080808"
+flight_boundary = "#FF4D5E"
+search_boundary = "#FBB21C"
+search_boundary_inactive = "#6A4F16"
+runway = "#2FD07B"
+waypoint = "#4DA6FF"
+waypoint_radius = "#2A4F73"
+waypoint_reached = "#2FD07B"
+aircraft = "#FFFFFF"
+track = "#4DA6FF"
+label = "#E0E0E0"
+
+[map.sizes]
+flight_boundary_width = 3
+search_boundary_width = 2
+runway_width = 2
+waypoint_radius_width = 1
+waypoint_marker_radius = 5
+aircraft_marker_radius = 8
+aircraft_heading_length = 18
+track_width = 2
+label_offset = 10

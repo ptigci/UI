@@ -1,0 +1,86 @@
+# UPLOAD MISSION / EXECUTE MISSION: the plan the operator builds step by step
+# and the wire format the drones read. The step codes and the payload keys must
+# stay in step with the mission_plan block of drone/config/mission.yaml and with
+# computer/config/mesh.yaml.
+
+[mission_plan]
+max_steps = 40
+# Starting values of the new-step row. A GO TO starts at no altitude change,
+# so a step that only translates needs nothing typed into that field.
+default_takeoff_altitude = 10.0
+default_altitude_change = 0.0
+default_formation_distance = 8.0
+default_formation_angle = 60.0
+
+# Keys of the upload message the UI publishes.
+[mission_plan.payload]
+plan_key = "plan"
+steps_key = "steps"
+
+# Keys of the progress messages the drones send back.
+[mission_plan.status_payload]
+plan_key = "plan"
+index_key = "i"
+status_key = "st"
+
+# Step codes on the wire.
+[mission_plan.step_codes]
+arm = "arm"
+disarm = "dis"
+takeoff = "tof"
+land = "lnd"
+goto = "gto"
+formation = "frm"
+
+# Progress codes the drones report.
+[mission_plan.status_codes]
+started = "run"
+done = "ok"
+failed = "err"
+missing = "gap"
+
+# What the task picker shows for each step.
+[mission_plan.step_labels]
+arm = "ARM"
+disarm = "DISARM"
+takeoff = "TAKE OFF"
+land = "LAND"
+goto = "GO TO"
+formation = "FORMATION"
+
+# How a step reads in the plan list and in the terminal.
+[mission_plan.step_text]
+arm = "ARM"
+disarm = "DISARM"
+land = "LAND"
+takeoff = "TAKE OFF to {altitude:.1f} m"
+goto = "GO TO north {north:.1f} m, east {east:.1f} m, alt {altitude:+.1f} m{rotation}"
+formation = "{formation} FORMATION at {distance:.1f} m, {angle:.0f}°"
+rotation_suffix = " + formation rotation"
+
+# What the formation picker shows for each formation code.
+[mission_plan.formation_labels]
+line = "LINE"
+v = "V"
+inverse_v = "INVERSE V"
+
+# Terminal lines and dialog texts.
+[mission_plan.text]
+window_title = "Upload mission"
+empty_plan = "The plan is empty. Pick a task and press ADD."
+add_button = "ADD STEP"
+# The altitude field means something different per task, so its label swaps.
+takeoff_altitude_label = "Altitude (m):"
+altitude_change_label = "Altitude change (m):"
+altitude_change_tooltip = "How much the swarm climbs on this leg. 0 keeps the current height, a negative value descends."
+rotation_switch = "Rotate the formation toward the target first"
+rotation_tooltip = "The swarm turns as one body onto the travel bearing, waits until every drone has finished turning, and only then flies to the target."
+uploaded = "Mission plan {plan} uploaded: {count} step(s)."
+upload_cancelled = "Mission plan upload cancelled; the previous plan is kept."
+no_plan = "No mission plan uploaded yet — press UPLOAD MISSION first."
+executing = "Mission plan {plan} started: {count} step(s)."
+status_started = "plan step {step}/{count} started | {description}"
+status_done = "plan step {step}/{count} done"
+status_failed = "plan step {step}/{count} FAILED — plan stopped"
+status_missing = "plan step {step} never arrived — upload the mission again"
+status_unknown = "plan step {step}: unknown status '{status}'"

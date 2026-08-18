@@ -1,0 +1,51 @@
+# Window and widget constants used only by the Sürü İHA interface. Widget
+# sizes and styles live in the designer/*.ui files (edit with Qt Designer).
+
+[ui]
+# The latency calibration spins the motors, so the operator is asked before
+# anything is sent. Answering No still measures the link, without the motors.
+latency_props_title = "Are the propellers removed?"
+latency_props_question = """This calibration arms the drone and commands a takeoff, so the motors will spin.
+
+Yes  — propellers are OFF, measure the motor response too.
+No   — measure the link latency only, motors stay still."""
+# Layout of the camera / telemetry monitor grids in the swarm tab.
+# Cameras beyond columns × rows go to extra pages behind the < > buttons.
+swarm_grid_columns = 2
+swarm_camera_rows = 2
+swarm_camera_min_height = 120
+# Tall enough to hold a control-height button and its border. Below that the
+# remove button is drawn clipped by the header it sits in.
+swarm_camera_header_height = 34
+# Telemetry blocks: a font a bit smaller than the 14px app default, and how
+# many drones are readable without scrolling. Four means every field of the
+# first four drones is on screen; a fifth drone brings the scrollbar.
+swarm_telemetry_visible_drones = 4
+# Per-drone mission state shown until the first state message arrives.
+state_unknown_text = "-"
+# Per-drone PPS clock indicator, fed by the drone/{id}/clock reports.
+clock_waiting_text = "PPS: -"
+clock_synced_text = "PPS: synced"
+clock_no_sync_text = "PPS: NO SYNC"
+# Mission 1 target selector: shown at spinbox value 0 (drone id from the QR).
+mission_target_auto_text = "AUTO"
+# MISSION 2 is a toggle: the same button starts the RC session and ends it.
+# The start text is also the button's label in designer/swarm_panel.ui.
+mission2_start_text = "MISSION 2"
+mission2_stop_text = "STOP MISSION 2"
+# QR content panel in the swarm tab.
+qr_panel_title = "QR CONTENT"
+qr_no_data_text = "No QR decoded yet"
+# Drone states that mean a mission is flying. While any drone reports one of
+# these the command buttons are greyed out: the şartname allows the ground
+# station no input during a mission beyond the start command, and the drones
+# refuse those commands anyway — this is so the operator sees it before
+# pressing. EMERGENCY and REFRESH stay enabled. The strings are the state
+# values the drones publish (mission/state_machine.py DroneState).
+mission_active_states = [
+    "Synchronizing", "Preflight", "TakingOff", "TakeoffFailed", "PreparingLeg",
+    "RejoiningFormation", "TurningFormation", "QRSearching", "Moving",
+    "CatchingUp", "QRReading", "MissionExecuting", "LeavingSwarm",
+    "RejoiningSwarm", "ReserveStandby", "PlanExecuting", "ReturningHome",
+    "MissionFailed", "Landing",
+]

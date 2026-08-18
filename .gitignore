@@ -1,0 +1,56 @@
+# Claude Code (kept local, not tracked)
+.claude/
+.claude.json
+.claude.json.backup
+CLAUDE.md
+
+# Documentation (kept local, not tracked)
+docs/
+guides/
+
+# Byte-compiled / cache
+__pycache__/
+*.py[cod]
+*$py.class
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+
+# Virtual environments
+venv/
+.venv/
+env/
+ENV/
+
+# Packaging / build
+build/
+dist/
+*.egg-info/
+*.egg
+
+# Logs
+*.log
+log/
+
+# Offline map tiles. Cut before travelling, hundreds of megabytes, and one per
+# flying site — the folder ships empty and the file is copied in on the day.
+*.mbtiles
+
+# Media (kept local, not tracked)
+*.mp4
+*.pdf
+
+# Environment / secrets
+.env
+.env.*
+
+# Editor / IDE
+.vscode/
+.idea/
+*.swp
+
+# OS
+.DS_Store
+Thumbs.db
+
+install-pyenv-win.ps1

@@ -1,0 +1,7 @@
+# mqtt/ module: how the UI reaches the broker. The topics themselves belong to
+# a competition, so they live in competitions/<name>/config/mqtt.toml.
+# The broker address lives in config/general.toml.
+
+[mqtt]
+port = 1883
+keepalive_seconds = 60

@@ -1,0 +1,193 @@
+# The mission bus. Topics and payload field names live here and nowhere else.
+# The aircraft side of the same contract is SUAS/vtol/shared/protocol/config/ —
+# keep the two in step by hand until one of them becomes the single source.
+# SUAS/tools/check_contract.py compares them.
+#
+# This application never talks to the aircraft. The broker it connects to is on
+# the ground services machine (config/general.toml → broker_address), and
+# SUAS/computer/relay is the only thing joined to both that broker and the
+# aircraft's. So a topic here is a topic the ground services agreed to carry —
+# `mapping_frame` is deliberately not one of them, because it is their input and
+# nothing here draws it.
+#
+# RTL, LAND and flight termination are absent for a different reason: they go
+# over the direct MAVLink link, never through a broker at all. See
+# config/safety.toml.
+
+[mqtt.topics.subscribe]
+telemetry = "suas/telemetry/state"
+waypoint = "suas/telemetry/waypoint"
+mission_state = "suas/mission/state"
+target_detected = "suas/target/detected"
+target_track = "suas/target/track"
+target_blacklist = "suas/target/blacklist"
+payload_state = "suas/payload/state"
+release_countdown = "suas/payload/countdown"
+camera_state = "suas/camera/state"
+video_frame = "suas/video/frame"
+mapping_progress = "suas/mapping/progress"
+health_link = "suas/health/link"
+health_system = "suas/health/system"
+command_ack = "suas/command/ack"
+
+[mqtt.topics.publish]
+mission_command = "suas/command/mission"
+flight_command = "suas/command/flight"
+target_confirm = "suas/target/confirm"
+target_designate = "suas/target/designate"
+blacklist_clear = "suas/target/blacklist_clear"
+payload_command = "suas/payload/command"
+camera_command = "suas/camera/command"
+mapping_request = "suas/mapping/request"
+
+[payloads.telemetry]
+# These are the aircraft's spellings, from SUAS/vtol/shared/protocol/config/
+# messages.toml. They carry their units because the wire is metric and this
+# display is not -- see units.py. Do not "tidy" them: a name that does not match
+# the aircraft's reads as an empty value on the judge's screen and nothing says
+# why. tools/check_contract.py in the SUAS repository compares the two.
+latitude = "latitude"
+longitude = "longitude"
+altitude_agl_metres = "altitude_agl_m"
+altitude_amsl_metres = "altitude_amsl_m"
+ground_speed_metres_per_second = "groundspeed_ms"
+heading_degrees = "heading_deg"
+mode = "flight_mode"
+armed = "armed"
+battery_voltage = "battery_voltage"
+battery_percent = "battery_percent"
+gps_fix = "gps_fix"
+satellite_count = "satellites"
+
+# Terrain clearance would need a rangefinder the aircraft does not carry.
+# altitude_agl_m is the height above ground we actually have.
+terrain_clearance_metres = "terrain_clearance_m"
+
+[payloads.waypoint]
+current_index = "waypoint_index"
+total_count = "waypoint_count"
+distance_metres = "distance_m"
+acceptance_radius_metres = "acceptance_radius_m"
+
+[payloads.mission]
+state = "state"
+laps_completed = "laps_completed"
+lap_waypoint_index = "lap_waypoint_index"
+lap_valid = "lap_valid"
+lap_invalid_reason = "lap_invalid_reason"
+laps_locked = "laps_locked"
+
+[payloads.target]
+# What the aircraft puts on suas/target/detected. These are OUR wire names --
+# the shared review browser has its own vocabulary (config/interface.toml at the
+# app root), and the controller translates between the two so neither has to
+# know about the other.
+track_id = "track_id"
+target_class = "target_class"
+confidence = "confidence"
+latitude = "latitude"
+longitude = "longitude"
+image_base64 = "image_base64"
+frame_timestamp = "frame_timestamp"
+decision_state = "decision_state"
+
+[payloads.release_countdown]
+# What the aircraft puts on suas/payload/countdown while a delivery is being set
+# up. `mode` says which release is talking; everything else may be absent on a
+# refusal that never got as far as measuring anything.
+mode = "mode"
+track_id = "track_id"
+target_class = "target_class"
+metres_to_release = "metres_to_release"
+distance_to_target_metres = "distance_to_target_m"
+throw_metres = "throw_m"
+heading_error_degrees = "heading_error_deg"
+release_allowed = "release_allowed"
+reason = "reason"
+
+[payloads.flight_command]
+# What goes back on suas/command/flight, one press at a time.
+command_id = "command_id"
+action = "action"
+
+[payloads.camera_state]
+# Whether the A8 mini is recording to its own card. It is retained, so this is
+# also what a GCS started mid-flight is told the moment it subscribes.
+recording = "recording"
+reason = "reason"
+
+[payloads.camera_command]
+# Start or stop that recording.
+command_id = "command_id"
+action = "action"
+
+[payloads.video_frame]
+# One preview frame, published by the ground services and never by the
+# aircraft. The full-rate downlink is UDP between the aircraft and that
+# machine; this is the part that crosses to the interface.
+image_base64 = "image_base64"
+width = "width"
+height = "height"
+frame_timestamp = "frame_timestamp"
+
+[codes.camera_command]
+start_recording = "start_recording"
+stop_recording = "stop_recording"
+
+[payloads.command_ack]
+# The aircraft's answer to a press, on suas/command/ack. `status` is the field
+# that matters: a press that was sent and a press that was acted on are
+# different facts, and only the aircraft knows which happened.
+command_id = "command_id"
+command = "command"
+status = "status"
+reason = "reason"
+
+[codes.release_mode]
+# Which release the countdown is describing, spelled as `mode` in the
+# aircraft's SUAS/vtol/config/payload.toml.
+winch = "winch"
+ballistic = "ballistic"
+
+[codes.command_ack]
+# What the aircraft says about a press. "accepted" means it is being acted on
+# now; "done" means a one-shot command finished; "rejected" comes with a reason.
+accepted = "accepted"
+done = "done"
+rejected = "rejected"
+
+[payloads.target_confirm]
+# What goes back on suas/target/confirm.
+track_id = "track_id"
+decision = "decision"
+operator_id = "operator_id"
+
+[codes.target_decision]
+# The two answers. The aircraft compares against "approve"; anything else is a
+# denial, so these are not interchangeable with the button labels.
+approve = "approve"
+deny = "deny"
+
+[payloads.link]
+mission_link_up = "mission_link_up"
+mission_link_loss_percent = "mission_link_loss_percent"
+safety_link_up = "safety_link_up"
+safety_heartbeat_age_ms = "safety_heartbeat_age_ms"
+
+[codes.flight_command]
+# The steps of the operator-driven delivery, mirrored from the aircraft's
+# SUAS/vtol/shared/protocol/config/commands.toml. The aircraft compares the
+# `action` field against these strings, so a spelling that drifts is a button
+# that goes out, gets refused in the air, and looks from here like nothing
+# happened.
+#
+# Arming, taking off and landing are deliberately not here: this application
+# never arms the aircraft, and landing goes over the direct MAVLink link with
+# RTL — see config/safety.toml.
+goto_target = "goto_target"
+release = "release"
+finish = "finish"
+
+[codes.mode]
+# The lap only counts while the autopilot holds this mode (3.7).
+autonomous = "AUTO"
