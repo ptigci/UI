@@ -62,4 +62,10 @@ class MqttClient:
         except (json.JSONDecodeError, UnicodeDecodeError) as decode_error:
             logger.warning(f"Ignoring non-JSON payload on '{message.topic}': {decode_error}")
             return
-        self.on_message_callback(message.topic, payload)
+        # This runs on paho's network thread. An exception that escapes here
+        # ends that thread, and the whole interface silently stops receiving
+        # -- so one bad message is logged and the next one is read.
+        try:
+            self.on_message_callback(message.topic, payload)
+        except Exception:
+            logger.exception(f"Handling a message on '{message.topic}' failed.")

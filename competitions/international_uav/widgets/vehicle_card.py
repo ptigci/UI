@@ -18,12 +18,13 @@ from competitions.international_uav.config import (
     CARD_GPS_FORMAT,
     CARD_MODE_FORMAT,
     CARD_NO_TARGET_TEXT,
-    CARD_PAYLOAD_FORMAT,
+    CARD_NO_WAYPOINT_TEXT,
     CARD_POSITION_FORMAT,
     CARD_SPEED_FORMAT,
     CARD_STALE_FORMAT,
     CARD_STATE_FORMAT,
     CARD_TARGET_FORMAT,
+    CARD_WAYPOINT_FORMAT,
     MISSING_VALUE_TEXT,
 )
 from theme import set_role, set_state
@@ -164,17 +165,16 @@ class VehicleCard(Card):
         )
 
     def mission_text(self) -> str:
-        """Only the agents carry a payload to a target, so only they show one."""
+        """The Pasifik flies a mission of waypoints; the agents are sent to a target."""
         if self.vehicle.is_pasifik:
-            return ""
+            if self.vehicle.waypoint is None or self.vehicle.waypoint_total is None:
+                return CARD_NO_WAYPOINT_TEXT
+            return CARD_WAYPOINT_FORMAT.format(
+                current=self.vehicle.waypoint, total=self.vehicle.waypoint_total
+            )
         if self.vehicle.assigned_target is None:
-            target_text = CARD_NO_TARGET_TEXT
-        else:
-            target_text = CARD_TARGET_FORMAT.format(target_id=self.vehicle.assigned_target)
-        payload_text = CARD_PAYLOAD_FORMAT.format(
-            payload_state=self.value_or_missing(self.vehicle.payload_state)
-        )
-        return f"{target_text}   {payload_text}"
+            return CARD_NO_TARGET_TEXT
+        return CARD_TARGET_FORMAT.format(target_id=self.vehicle.assigned_target)
 
     @staticmethod
     def value_or_missing(value) -> str:

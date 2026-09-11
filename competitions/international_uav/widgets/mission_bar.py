@@ -1,34 +1,30 @@
 """The bar across the top: mission state, scan progress, and the way out.
 
-SEND DRONES is the one control here that starts the mission. HOLD and ABORT are
-the two that matter when something goes wrong, so they are wide, confirmed, and
+SEND DRONES is the one control here that starts the mission. HOLD, RETREAT and
+ABORT are the three that matter when something goes wrong, so they are wide and
 they report how many vehicles actually answered. A command nobody acknowledged
 is worse than no command, and the operator must see that immediately.
 
-RECORD asks for the Pasifik's camera to be written to its card. It is not
-confirmed — nothing about the flight changes — and the light beside it says REC
-only once the aircraft reports that the recording is running.
+Every button here acts on the click. There is nothing to say yes to: a recall
+the operator has to confirm twice is a recall that arrives late.
+
+RECORD asks for the Pasifik's camera to be written to its card. The light beside
+it says REC only once the aircraft reports that the recording is running.
 """
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QHBoxLayout, QMessageBox, QPushButton, QSizePolicy, QWidget
+from PyQt6.QtWidgets import QHBoxLayout, QPushButton, QSizePolicy, QWidget
 
 from competitions.international_uav.config import (
-    ABORT_CONFIRM_QUESTION,
-    ABORT_CONFIRM_TITLE,
     ABORT_TEXT,
     ACK_CAPTION,
     ACK_COMPLETE_FORMAT,
     ACK_NONE_TEXT,
     ACK_PENDING_FORMAT,
     ACK_TIMEOUT_FORMAT,
-    DISPATCH_CONFIRM_QUESTION,
-    DISPATCH_CONFIRM_TITLE,
     DISPATCH_TEXT,
     ELAPSED_CAPTION,
     ELAPSED_FORMAT,
-    HOLD_CONFIRM_QUESTION,
-    HOLD_CONFIRM_TITLE,
     HOLD_TEXT,
     MISSION_ACTIVE_STATES,
     MISSION_STATE_PREFIX,
@@ -38,6 +34,7 @@ from competitions.international_uav.config import (
     RECORDING_OFF_TEXT,
     RECORDING_ON_TEXT,
     RESUME_TEXT,
+    RETREAT_TEXT,
     SCAN_CAPTION,
     SCAN_PROGRESS_FORMAT,
     SCAN_WAITING_TEXT,
@@ -70,6 +67,7 @@ class MissionBar(QWidget):
     dispatch_requested = pyqtSignal()
     hold_requested = pyqtSignal()
     resume_requested = pyqtSignal()
+    retreat_requested = pyqtSignal()
     abort_requested = pyqtSignal()
     start_recording_requested = pyqtSignal()
     stop_recording_requested = pyqtSignal()
@@ -90,11 +88,12 @@ class MissionBar(QWidget):
         self.ack_reading = Readout(ACK_CAPTION, parent=self)
         self.recording_pill = StatusPill(self)
 
-        # Quiet on purpose: the recording control sits beside three mission
-        # commands and must not look like a fourth one.
+        # Quiet on purpose: the recording control sits beside four mission
+        # commands and must not look like a fifth one.
         self.recordbtn = self.build_button(RECORD_TEXT, VARIANT_GHOST)
         self.dispatchbtn = self.build_button(DISPATCH_TEXT, VARIANT_PRIMARY)
         self.holdbtn = self.build_button(HOLD_TEXT, VARIANT_CAUTION)
+        self.retreatbtn = self.build_button(RETREAT_TEXT, VARIANT_CAUTION)
         self.abortbtn = self.build_button(ABORT_TEXT, VARIANT_DANGER)
 
         bar_layout = QHBoxLayout(self)
@@ -108,12 +107,14 @@ class MissionBar(QWidget):
         bar_layout.addWidget(self.recordbtn)
         bar_layout.addWidget(self.dispatchbtn)
         bar_layout.addWidget(self.holdbtn)
+        bar_layout.addWidget(self.retreatbtn)
         bar_layout.addWidget(self.abortbtn)
 
         self.recordbtn.clicked.connect(self.request_recording)
-        self.dispatchbtn.clicked.connect(self.request_dispatch)
+        self.dispatchbtn.clicked.connect(self.dispatch_requested)
         self.holdbtn.clicked.connect(self.request_hold_or_resume)
-        self.abortbtn.clicked.connect(self.request_abort)
+        self.retreatbtn.clicked.connect(self.retreat_requested)
+        self.abortbtn.clicked.connect(self.abort_requested)
 
         self.show_mission_state(None)
         self.show_elapsed(0.0)
@@ -127,47 +128,12 @@ class MissionBar(QWidget):
 
     # Operator actions
 
-    def request_dispatch(self) -> None:
-        """Send the swarm out, once the operator has confirmed it.
-
-        Confirmed like the other two: this is the click that puts every agent in
-        the air, and the dialog says so along with the one condition the ground
-        station will refuse it on.
-        """
-        confirmed = QMessageBox.question(
-            self,
-            DISPATCH_CONFIRM_TITLE,
-            DISPATCH_CONFIRM_QUESTION,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if confirmed == QMessageBox.StandardButton.Yes:
-            self.dispatch_requested.emit()
-
     def request_hold_or_resume(self) -> None:
+        """One button for both, because the swarm is either held or it is not."""
         if self.holding:
             self.resume_requested.emit()
             return
-        confirmed = QMessageBox.question(
-            self,
-            HOLD_CONFIRM_TITLE,
-            HOLD_CONFIRM_QUESTION,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if confirmed == QMessageBox.StandardButton.Yes:
-            self.hold_requested.emit()
-
-    def request_abort(self) -> None:
-        confirmed = QMessageBox.question(
-            self,
-            ABORT_CONFIRM_TITLE,
-            ABORT_CONFIRM_QUESTION,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if confirmed == QMessageBox.StandardButton.Yes:
-            self.abort_requested.emit()
+        self.hold_requested.emit()
 
     def request_recording(self) -> None:
         """Ask for the opposite of what the ground station is doing now.

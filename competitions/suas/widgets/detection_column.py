@@ -38,6 +38,6 @@ class DetectionColumn(DetectionReviewPanel):
         """
         if not detection.has_location():
             return DETECTION_MISSING_LOCATION_TEXT
-        if detection.label() == DETECTION_UNKNOWN_CLASS_NAME:
+        if detection.label().startswith(DETECTION_UNKNOWN_CLASS_NAME):
             return DETECTION_UNKNOWN_CLASS_TEXT
         return None

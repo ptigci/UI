@@ -1,0 +1,474 @@
+# The TEST tab: the bench page where the camera, the release mechanism, the
+# mapping stitch and the waypoint triggers are proved before a flight.
+#
+# It is bench equipment and it covers the map, so it only exists in developer
+# mode -- the same rule the DEV tab lives by, and for the same reason. §3.0.6
+# makes an uncovered map a condition of taking off, and a judge never sees this
+# page.
+#
+# Everything the operator reads is a string in this file. The four pages are
+# selected like tabs and can be dragged into whatever order suits the test.
+
+[test]
+enabled = true
+
+tab_title = "TEST"
+page_titles = { camera = "CAMERA", drop = "OBJECT DROP", mapping = "MAPPING", waypoints = "WAYPOINT MONITOR", detection = "DETECTION" }
+
+# How long a press waits for an answer before the page says there was none.
+#
+# A press does not go to the aircraft. It goes to the broker on the ground
+# services machine, computer/relay carries it over the Rocket link, and the
+# acknowledgement comes back the same way -- so a silence could be any of those
+# four, and nothing on these pages may claim to know which.
+command_ack_timeout_ms = 6000
+
+# How often the pages redraw the numbers that keep moving on their own -- the
+# transfer clock, the age of the last gimbal reading.
+refresh_interval_ms = 500
+
+# How old the last gimbal message may be before the readings stop being called
+# live. The aircraft sends several a second while the page is open.
+gimbal_stale_seconds = 3.0
+
+[test.layout]
+# The picture takes the room. The command columns are not given a width at all:
+# a fixed one only has to be narrower than the longest button on it once, and
+# then Qt draws the column on top of itself. They take their own size hint and
+# the picture takes the rest.
+video_minimum_height = 360
+monitor_minimum_height = 140
+progress_bar_height = 18
+# The crop thumbnail on one row of the detection page.
+sighting_crop_width = 120
+sighting_crop_height = 90
+
+[test.camera]
+# The camera page. Two columns of the same presses either side of the picture,
+# because there are two places a frame can be kept and the whole point of the
+# page is finding out which of them is working.
+stream_column_title = "RTSP STREAM"
+stream_column_hint = "The 1080p picture the Pi reads. Video and stills are written on the Pi."
+card_column_title = "CAMERA SD CARD"
+card_column_hint = "The 4K card inside the camera. The only copy at that size, and the Pi never sees it."
+
+start_video_text = "START VIDEO"
+stop_video_text = "STOP VIDEO"
+take_photo_text = "TAKE PHOTO"
+start_timer_text = "PHOTOS AT RATE"
+stop_timer_text = "STOP PHOTOS"
+rate_caption = "RATE"
+rate_suffix = " Hz"
+# What the rate box will accept. Below the bottom of this the test tells you
+# nothing you could not see by hand; above the top the camera starts skipping
+# shots instead of taking them.
+rate_minimum = 0.2
+rate_maximum = 5.0
+rate_default = 1.0
+rate_step = 0.2
+rate_decimals = 1
+
+list_files_text = "LIST CARD FILES"
+fetch_files_text = "GET PHOTOS / VIDEOS"
+watch_on_text = "GET FRAMES CONSTANTLY"
+watch_off_text = "STOP GETTING FRAMES"
+
+send_photos_on_text = "SEND PHOTOS TO GCS"
+send_photos_off_text = "STOP SENDING PHOTOS"
+send_videos_on_text = "SEND VIDEOS TO GCS"
+send_videos_off_text = "STOP SENDING VIDEOS"
+
+command_sent_text = "Sent; waiting for the aircraft."
+command_accepted_text = "The aircraft took it."
+command_rejected_format = "Refused: {reason}"
+command_timeout_text = "No answer came back through the ground services."
+
+waiting_text = "Waiting for the aircraft."
+no_signal_text = "NO PICTURE"
+
+[test.camera.transfer]
+# The copy off the camera's card, and the bar that says how far through it is.
+title = "TRANSFER TO GCS"
+idle_text = "Nothing being copied."
+listing_text = "Reading the card."
+fetching_format = "{file_name} — file {files_done} of {files_total}"
+complete_format = "{files_done} files copied."
+failed_format = "Copy failed: {reason}"
+bytes_format = "{done:.1f} of {total:.1f} MB"
+files_caption = "FILES"
+saved_caption = "SAVED TO"
+open_folder_text = "OPEN FOLDER"
+# Where a file that comes down lands on this laptop.
+download_folder = "downloads/camera"
+
+[test.camera.card]
+# What the camera says about its own card, under the fetch buttons.
+title = "ON THE CARD"
+count_format = "{photos} photos, {videos} videos"
+empty_text = "Nothing on the card, or the card was not readable."
+size_format = "{megabytes:.1f} MB"
+free_caption = "FREE"
+state_caption = "CARD"
+kind_photo_text = "PHOTO"
+kind_video_text = "VIDEO"
+# One line of the listing. A file already on this laptop says so, so a second
+# GET only asks for the ones that are still only on the camera.
+entry_format = "{name} — {kind}, {size}"
+fetched_format = "{name} — {kind}, {size} — already here"
+
+[test.gimbal]
+# The gimbal controls along the bottom of the camera page, and the values the
+# camera reports back beside them.
+title = "GIMBAL"
+yaw_caption = "YAW"
+pitch_caption = "PITCH"
+angle_format = "{degrees:+.1f} deg"
+zoom_caption = "ZOOM"
+zoom_format = "{zoom:.1f} x"
+# The box you type into and the reading beside it carry the same word, so each
+# has to say which of the two it is. Telling them apart is the whole test.
+asked_caption_format = "{caption} TO"
+reported_caption_format = "{caption} NOW"
+angle_suffix = " deg"
+zoom_suffix = " x"
+angle_decimals = 1
+zoom_decimals = 1
+# The two chips that say what the camera's own card is doing. A chip has no
+# caption line above it the way a reading does, so it carries its own.
+chip_format = "{caption} {value}"
+card_free_format = "{caption} {megabytes:.1f} MB"
+point_text = "POINT"
+centre_text = "CENTRE"
+stop_text = "STOP"
+down_text = "POINT DOWN"
+# The angle POINT DOWN asks for. Straight down is what the survey and the
+# detector both want, and it is the one angle worth a button of its own.
+down_pitch_degrees = -90.0
+down_yaw_degrees = 0.0
+# What the two spin boxes will accept. The A8 mini's own travel; asking for
+# more only produces a command the camera clamps.
+yaw_minimum_degrees = -135.0
+yaw_maximum_degrees = 135.0
+pitch_minimum_degrees = -90.0
+pitch_maximum_degrees = 25.0
+zoom_minimum = 1.0
+zoom_maximum = 6.0
+zoom_step = 0.5
+angle_step = 5.0
+
+reachable_text = "ANSWERING"
+unreachable_text = "NO ANSWER"
+stale_text = "STALE"
+stream_up_text = "STREAM UP"
+stream_down_text = "NO STREAM"
+recording_text = "RECORDING"
+idle_text = "IDLE"
+
+[test.drop]
+# The object drop page. One HOLD and one RELEASE per bay, and a monitor that
+# says where the servo actually went -- which is the only way to tell a servo
+# that moved from a press that went nowhere.
+# The payloads the aircraft carries, mirrored from its
+# ../SUAS/vtol/config/payload.toml [payload.stations]. They are here so the
+# presses exist before the aircraft is talking: this page is for proving a
+# servo moves, and one that stayed blank until the link came up could not.
+#
+# The aircraft's word still wins. When it says what it is carrying, a payload
+# it did not mention keeps its buttons and a spent one loses its presses, and
+# a press for something it does not have is refused with the reason -- which
+# is itself worth seeing on a bench.
+stations = ["water_bottle", "beacon"]
+
+title = "RELEASE MECHANISM"
+hold_format = "HOLD {station}"
+release_format = "RELEASE {station}"
+waiting_text = "These are the payloads in the config. The aircraft has not said what it is carrying yet."
+hint_text = "HOLD grips the payload. RELEASE lets it go. One press each."
+
+command_sent_text = "Sent; waiting for the aircraft."
+command_accepted_text = "The aircraft took it."
+command_rejected_format = "Refused: {reason}"
+command_timeout_text = "No answer came back through the ground services."
+
+# A drop on a place the operator names, rather than on a target the aircraft
+# found for itself. Three steps, and they are separate on purpose: type the
+# place, look at the route the aircraft comes back with, then fly it. A route
+# that flew itself the moment it was computed would give nobody the chance to
+# see it was wrong.
+place_title = "DROP ON A PLACE"
+latitude_caption = "LATITUDE"
+longitude_caption = "LONGITUDE"
+altitude_caption = "ALTITUDE"
+altitude_suffix = " m AGL"
+station_caption = "WHICH PAYLOAD"
+plan_text = "PLAN THE ROUTE"
+# The same delivery in one press. PLAN THE ROUTE lets somebody look at the route
+# first; this one flies it straight away, which is what you want once the route
+# has been proved a few times and the two presses have become a ceremony.
+drop_on_arrival_text = "GO THERE AND DROP"
+radius_caption = "ARRIVED WITHIN"
+radius_suffix = " m"
+# Mirrored from the aircraft's ../SUAS/vtol/config/route.toml [route.named].
+# It refuses anything outside these rather than clamping it, so a box that let
+# a smaller number be typed would only produce a refusal. The default is the
+# aircraft's own wp_radius_m, which is what decides arrival when a press
+# carries no radius at all.
+radius_minimum_metres = 5.0
+radius_maximum_metres = 100.0
+radius_default_metres = 20.0
+radius_step_metres = 0.5
+radius_decimals = 1
+planning_and_dropping_text = "Flying there now. It drops when it arrives."
+approve_text = "FLY IT AND DROP"
+reject_text = "THROW IT AWAY"
+place_hint_text = "Nothing moves until the route is approved. The map draws it."
+no_route_text = "No route planned."
+route_planning_text = "Waiting for the aircraft to work out the route."
+route_proposed_format = "{length:.0f} m, about {seconds:.0f} s. Look at it on the map."
+route_flying_text = "Flying the route. It drops when it arrives."
+# The aircraft's own note on the route, when it has one -- which on a
+# route it could not plan is the whole diagnosis.
+route_reason_format = "{status} — {reason}"
+route_rejected_text = "Route thrown away."
+route_done_text = "Delivered."
+coordinate_decimals = 7
+# One click of the arrows on a latitude or longitude box. Qt's own default
+# is a whole degree, which is about 111 km and never what anybody wanted.
+coordinate_step = 0.00001
+latitude_minimum = -90.0
+latitude_maximum = 90.0
+longitude_minimum = -180.0
+longitude_maximum = 180.0
+altitude_minimum_metres = 10.0
+altitude_maximum_metres = 120.0
+altitude_step_metres = 5.0
+
+monitor_title = "SERVO MONITOR"
+position_caption = "PULSE"
+position_format = "{position:.0f} us"
+state_caption = "STATE"
+pin_caption = "OUTPUT"
+moved_caption = "LAST MOVED"
+moved_format = "{seconds:.0f} s ago"
+never_moved_text = "never"
+simulated_text = "SIMULATED"
+unknown_state_text = "UNKNOWN"
+
+[test.waypoints]
+# The waypoint monitor. The mission the autopilot is flying was loaded in
+# Mission Planner and which item should start the scan is a thing you find out
+# on the day, so the two numbers are set from here rather than from the
+# aircraft's config -- and the aircraft says which one fired, so the page can
+# show it happening.
+title = "WAYPOINT MONITOR"
+progress_caption = "WAYPOINT"
+progress_format = "{index} of {count}"
+progress_waiting_text = "The aircraft has not reported a waypoint yet."
+distance_caption = "DISTANCE"
+distance_format = "{metres:.0f} m"
+
+start_caption = "START THE SCAN AT"
+finish_caption = "END THE SCAN AT"
+set_text = "SET"
+clear_text = "CLEAR BOTH"
+armed_format = "armed on item {index}"
+not_armed_text = "not armed"
+minimum_index = 0
+maximum_index = 999
+
+# What appears the moment the aircraft crosses one of the two, and stays there
+# for the rest of the flight.
+triggered_caption = "SCAN TRIGGER"
+triggered_start_text = "START"
+triggered_finish_text = "STOP"
+triggered_format = "on item {index}"
+not_triggered_text = "Nothing has fired yet."
+
+command_sent_text = "Sent; waiting for the aircraft."
+command_accepted_format = "Armed on item {index}."
+command_cleared_text = "Both items cleared."
+command_rejected_format = "Refused: {reason}"
+command_timeout_text = "No answer came back through the ground services."
+
+[test.mapping]
+# The mapping page. Two halves, because a mapping pass is proved in two ways
+# and they are not the same test.
+#
+# The toggle is the flight: switched on, the aircraft starts taking frames and
+# sending them down with the position and the yaw, pitch and roll they were
+# taken at; switched off, the ground services stitch what arrived, the mosaic
+# comes back here, and it is saved on their disk. Nobody on this end ever knows
+# the folder they chose, which is why the stitch is asked for with no path.
+#
+# The folder picker is the bench: point the ground services at a folder of
+# frames from a flight that has already happened and stitch it again. It is the
+# only way to work on the stitcher without flying.
+title = "MAPPING"
+capture_title = "IN THE AIR"
+bench_title = "FROM A FOLDER"
+
+start_capture_text = "START MAPPING"
+stop_capture_text = "STOP AND BUILD THE MAP"
+capture_idle_text = "Not capturing."
+capture_running_format = "{captured} taken, {sent} sent, {queued} waiting."
+capture_sent_text = "Sent; waiting for the aircraft."
+capture_accepted_text = "The aircraft took it."
+capture_rejected_format = "Refused: {reason}"
+capture_timeout_text = "No answer came back through the ground services."
+capture_stale_text = "Capturing, but the aircraft has stopped saying how it is going."
+# How old the last progress message may be before the capture stops being
+# called live. The aircraft sends one every couple of frames.
+capture_stale_seconds = 8.0
+
+browse_text = "CHOOSE A FOLDER"
+build_text = "BUILD THE MAP"
+folder_dialog_title = "The folder of recorded frames"
+no_folder_text = "No folder chosen."
+
+preview_placeholder_text = "No map yet."
+built_format = "Map built from {used} frames."
+open_folder_text = "OPEN THE FOLDER"
+export_text = "COPY TO USB"
+saved_format = "Saved to {path}"
+
+[test.detection]
+# The detection bench. Which detector is running, how sure it has to be before
+# it says anything, what it saw, and how far off the place it put each thing
+# was -- which is the number the whole page exists to produce.
+#
+# The truth points are typed in here and never leave this laptop. Nobody knows
+# where the mannequin really is except whoever put it there, so the aircraft
+# cannot be asked and the error has to be worked out on the ground.
+title = "DETECTION"
+backend_caption = "DETECTOR"
+backend_labels = { hailo = "HAILO AI HAT+", yolo = "YOLO ON THE CPU", qr = "PRINTED QR CODE" }
+start_text = "START DETECTING"
+stop_text = "STOP DETECTING"
+confidence_caption = "AT LEAST"
+confidence_minimum = 0.0
+confidence_maximum = 1.0
+confidence_step = 0.05
+confidence_decimals = 2
+set_confidence_text = "SET"
+
+running_format = "{backend} — {frames_per_second:.1f} frames a second, {sightings} seen"
+idle_text = "Not detecting."
+fell_back_format = "Asked for {requested}, running {backend}."
+command_sent_text = "Sent; waiting for the aircraft."
+command_rejected_format = "Refused: {reason}"
+command_timeout_text = "No answer came back through the ground services."
+
+sighting_title = "WHAT IT SAW"
+sighting_waiting_text = "Nothing seen yet."
+sighting_label_format = "{target_class} — {confidence:.0%}"
+sighting_place_format = "{latitude:.7f}, {longitude:.7f}"
+sighting_no_place_text = "no place — the attitude was missing"
+sighting_limit = 40
+# Stands in the crop box when the picture behind a sighting would not
+# decode. The score and the place are the point of the row, so it keeps
+# its place rather than being dropped.
+sighting_no_picture_text = "no picture"
+
+# The truth-point boxes. The step is about 0.11 m, which is finer than
+# anything this measurement can resolve and coarse enough to type with.
+latitude_minimum = -90.0
+latitude_maximum = 90.0
+longitude_minimum = -180.0
+longitude_maximum = 180.0
+coordinate_decimals = 7
+coordinate_step = 0.000001
+# The table header. The last column is blank because it holds REMOVE.
+truth_columns = ["OBJECT", "LATITUDE", "LONGITUDE", "ERROR", ""]
+
+truth_title = "WHERE THEY REALLY ARE"
+truth_hint_text = "Type where each object actually is. The error is measured from the nearest sighting of its class."
+truth_class_caption = "OBJECT"
+truth_latitude_caption = "LATITUDE"
+truth_longitude_caption = "LONGITUDE"
+truth_add_text = "ADD"
+truth_remove_text = "REMOVE"
+truth_empty_text = "No truth points yet."
+error_caption = "ERROR"
+error_format = "{metres:.1f} m"
+error_waiting_text = "no sighting of that class yet"
+error_count_format = "from {count} sightings"
+
+[test.logging]
+# Every test writes its own log file. A camera test that fails and a drop test
+# that fails are different investigations, and one file with both in it is a
+# file somebody has to filter before they can read it -- so each page gets its
+# own, opened when the page is first shown and named with the time it started.
+#
+# The files are the record of what was pressed, what the aircraft answered and
+# what it reported in between. The application's own log keeps everything as
+# before; this is a copy of one page's share of it, on its own.
+folder = "logs/test"
+name_format = "{page}-{stamp}.log"
+stamp_format = "%Y%m%d-%H%M%S"
+# The page writes its own lines at this level whatever the application
+# is set to. A test log that only carried the failures would be missing
+# the presses that led to them, which is most of what makes it readable.
+level = "INFO"
+line_format = "%(asctime)s  %(levelname)-7s  %(message)s"
+time_format = "%H:%M:%S"
+
+# How many of a page's log files to keep. A bench day opens a page a dozen
+# times and every one of them writes a file; without this the folder is
+# unreadable by the afternoon.
+keep_files = 20
+
+[test.logging.loggers]
+# Which modules' logging goes into which page's file, on top of the lines the
+# tab writes about the presses themselves. Named in full because a prefix would
+# put the camera's models in the drop test's file.
+camera = [
+    "competitions.suas.widgets.test.camera_test_panel",
+    "competitions.suas.widgets.test.stream_column",
+    "competitions.suas.widgets.test.card_column",
+    "competitions.suas.widgets.test.gimbal_bar",
+    "competitions.suas.widgets.test.transfer_bar",
+    "competitions.suas.models.gimbal_state",
+    "competitions.suas.models.media_state",
+]
+drop = [
+    "competitions.suas.widgets.test.servo_test_panel",
+    "competitions.suas.widgets.test.place_drop_row",
+    "competitions.suas.models.servo_state",
+    "competitions.suas.models.route_plan",
+]
+mapping = [
+    "competitions.suas.widgets.test.mapping_test_panel",
+    "competitions.suas.models.mapping_capture_state",
+    "competitions.suas.models.stitch_state",
+]
+waypoints = [
+    "competitions.suas.widgets.test.waypoint_monitor_panel",
+    "competitions.suas.models.waypoint_watch_state",
+]
+detection = [
+    "competitions.suas.widgets.test.detection_test_panel",
+    "competitions.suas.widgets.test.sighting_column",
+    "competitions.suas.widgets.test.truth_point_table",
+    "competitions.suas.models.detector_state",
+    "competitions.suas.models.truth_points",
+    "competitions.suas.sighting_log.sighting_log",
+]
+
+[test.sighting_log]
+# Every sighting the detection page receives is kept on this laptop: one
+# folder per session under the [test.logging] folder, holding one line of
+# JSON per sighting and the crop it came with. The line carries what the
+# model said, where the aircraft put it, everything the projection was given
+# to put it there, and how far that is from the nearest truth point of its
+# class -- so the localisation can be looked at and improved after the
+# aircraft has landed, without pulling the card out of the Pi.
+#
+# These folders are never thinned out the way the page logs are. They are the
+# data, and a bench day's worth is a few tens of megabytes.
+folder_format = "sightings-{stamp}"
+log_name = "sightings.jsonl"
+# What each crop is called, beside the log. The confidence is written with the
+# separator in place of its decimal point, so the only dot is before jpg.
+crop_name_format = "{sighting_id}_{target_class}_conf{confidence}.jpg"
+confidence_decimals = 2
+decimal_separator = "_"

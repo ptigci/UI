@@ -16,17 +16,19 @@ from config import CAMERA_ADD_TEXT, CAMERA_REMOVE_TEXT, POSITION_DECIMALS
 from competitions.swarm_uav.widgets.clock_status import ClockStatusLabel
 from widgets.detection_review import DetectionReviewPanel
 from competitions.swarm_uav.config import (
-    LATENCY_PROPS_QUESTION,
-    LATENCY_PROPS_TITLE,
     MIN_TAKEOFF_ALTITUDE,
     MOVE_AXIS_MAX,
     MOVE_AXIS_MIN,
+    QR_NUMBER_MAX,
+    QR_NUMBER_MIN,
+    QR_TAB_LABEL,
     SPINBOX_DECIMALS,
     STATE_UNKNOWN_TEXT,
     TAKEOFF_ALTITUDE_MAX,
 )
 from theme import set_role
 from theme.tokens import ROLE_READOUT
+from competitions.swarm_uav.widgets.link_health import show_link_health
 
 FORM_PATH = Path(__file__).resolve().parent.parent / "designer" / "drone_panel.ui"
 
@@ -42,10 +44,9 @@ class DronePanel(QWidget):
     move_requested = pyqtSignal(float, float, float)
     land_requested = pyqtSignal()
     free_requested = pyqtSignal()
-    tau_calibration_requested = pyqtSignal()
-    # Carries the operator's answer about the propellers, so the drone decides
-    # on a human's word rather than on anything the software guessed.
-    latency_calibration_requested = pyqtSignal(bool)
+    color_calibration_requested = pyqtSignal()
+    # Carries the QR number the operator picked beside the button.
+    qr_location_requested = pyqtSignal(int)
     emergency_requested = pyqtSignal()
     camera_toggle_requested = pyqtSignal(bool)
 
@@ -91,6 +92,8 @@ class DronePanel(QWidget):
         for move_input in (self.xSpinBox, self.ySpinBox, self.zSpinBox):
             move_input.setRange(MOVE_AXIS_MIN, MOVE_AXIS_MAX)
             move_input.setDecimals(SPINBOX_DECIMALS)
+        for qr_number in range(QR_NUMBER_MIN, QR_NUMBER_MAX + 1):
+            self.qrnumberbox.addItem(QR_TAB_LABEL.format(qr_id=qr_number), qr_number)
 
     def connect_buttons(self) -> None:
         self.armbtn.clicked.connect(self.arm_requested)
@@ -99,8 +102,10 @@ class DronePanel(QWidget):
         self.fdisarmbtn.clicked.connect(self.force_disarm_requested)
         self.landbtn.clicked.connect(self.land_requested)
         self.freebtn.clicked.connect(self.free_requested)
-        self.taubtn.clicked.connect(self.tau_calibration_requested)
-        self.latencybtn.clicked.connect(self.request_latency_calibration)
+        self.colorcalbtn.clicked.connect(self.color_calibration_requested)
+        self.qrlocbtn.clicked.connect(
+            lambda: self.qr_location_requested.emit(self.qrnumberbox.currentData())
+        )
         self.emergencybtn.clicked.connect(self.emergency_requested)
         self.takeoffbtn.clicked.connect(self.request_takeoff)
         self.movebtn.clicked.connect(self.request_move)
@@ -119,18 +124,6 @@ class DronePanel(QWidget):
             return
         self.takeoff_requested.emit(altitude)
 
-    def request_latency_calibration(self) -> None:
-        answer = QMessageBox.question(
-            self,
-            LATENCY_PROPS_TITLE,
-            LATENCY_PROPS_QUESTION,
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        self.latency_calibration_requested.emit(
-            answer == QMessageBox.StandardButton.Yes
-        )
-
     def request_move(self) -> None:
         self.move_requested.emit(
             self.xSpinBox.value(), self.ySpinBox.value(), self.zSpinBox.value()
@@ -142,14 +135,22 @@ class DronePanel(QWidget):
         self.zlbl.setText(f"{z:.{POSITION_DECIMALS}f}")
         self.vlbl.setText(f"{velocity:.{POSITION_DECIMALS}f}")
 
-    def set_connection_age(self, age_milliseconds: int | None) -> None:
-        self.connlbl.set_age(age_milliseconds)
+    def set_connection_health(self, health) -> None:
+        show_link_health(self.connlbl, health)
 
     def set_state(self, state_text: str) -> None:
         self.statelbl.setText(f"state: {state_text}")
 
-    def set_clock_status(self, disciplined: bool, error_ms: float | None) -> None:
-        self.clocklbl.show_status(disciplined, error_ms)
+    def set_clock_status(self, source: str, error_ms: float | None) -> None:
+        self.clocklbl.show_status(source, error_ms)
+
+    def clear_display(self) -> None:
+        """Wipe the tab back to its startup state, terminal included. The
+        mission state survives: it only arrives when the vehicle changes it."""
+        self.update_position(0.0, 0.0, 0.0, 0.0)
+        self.clocklbl.reset()
+        self.connlbl.set_age(None)
+        self.terminal.clear()
 
     def set_camera_enabled(self, enabled: bool) -> None:
         self.camera_enabled = enabled

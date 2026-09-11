@@ -27,6 +27,7 @@ from competitions.swarm_uav.widgets.clock_status import ClockStatusLabel
 from theme import set_role
 from theme.tokens import ROLE_HEADING, ROLE_READOUT, ROLE_READOUT_LABEL
 from widgets.connection_status import ConnectionStatusLabel
+from competitions.swarm_uav.widgets.link_health import show_link_health
 
 POSITION_AXES = ("x", "y", "z", "v")
 
@@ -153,11 +154,11 @@ class TelemetryMonitor(QScrollArea):
             telemetry_row["axes"][axis_name].setText(f"{value:.{POSITION_DECIMALS}f}")
         self.reserve_width()
 
-    def set_connection_age(self, drone_id: int, age_milliseconds: int | None) -> None:
+    def set_connection_health(self, drone_id: int, health) -> None:
         telemetry_row = self.rows.get(drone_id)
         if telemetry_row is None:
             return
-        telemetry_row["age"].set_age(age_milliseconds)
+        show_link_health(telemetry_row["age"], health)
         self.reserve_width()
 
     def set_state(self, drone_id: int, state_text: str) -> None:
@@ -167,9 +168,20 @@ class TelemetryMonitor(QScrollArea):
         telemetry_row["state"].setText(state_text)
         self.reserve_width()
 
-    def set_clock_status(self, drone_id: int, disciplined: bool, error_ms: float | None) -> None:
+    def set_clock_status(self, drone_id: int, source: str, error_ms: float | None) -> None:
         telemetry_row = self.rows.get(drone_id)
         if telemetry_row is None:
             return
-        telemetry_row["clock"].show_status(disciplined, error_ms)
+        telemetry_row["clock"].show_status(source, error_ms)
         self.reserve_width()
+
+    def clear_readings(self) -> None:
+        """Blank the readings a connected drone sends again by itself.
+
+        The mission state is not one of them — a drone publishes it when it
+        changes, not on a timer — so it keeps what it last reported.
+        """
+        for drone_id, telemetry_row in self.rows.items():
+            self.update_position(drone_id, 0.0, 0.0, 0.0, 0.0)
+            telemetry_row["clock"].reset()
+            telemetry_row["age"].set_age(None)

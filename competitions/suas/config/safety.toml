@@ -4,11 +4,6 @@
 # MQTT through the Raspberry Pi, and it must work with the Pi powered off.
 
 [safety]
-# Hold, do not click. A modal confirmation would cover the map, which 3.0.6
-# forbids, and a bare click would drop the aircraft out of the sky.
-hold_to_confirm_ms = 1500
-hold_progress_interval_ms = 50
-
 # How long we wait for the autopilot to acknowledge before saying so.
 command_ack_timeout_ms = 3000
 

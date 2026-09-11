@@ -106,6 +106,5 @@ Kept local rather than tracked, next to the code they describe.
 | `docs/DESIGN_SYSTEM.md` | How every screen in every competition is allowed to look. Read it before touching anything visible. |
 | `docs/INTERNATIONAL_UAV_UI.md` | What the Uluslararası İHA interface must show and do: module layout, topic bindings, work items. |
 | `docs/SUAS_UI.md` | The same for SUAS. |
-| `../RULES.md` | The coding rules every change complies with. |
 | `../International-UAV/docs/TASKS.md` | The vehicle and ground-station work this interface talks to. |
-| `../SUAS/docs/COMPETITION_RULES.md` | Why the SUAS interface looks the way it does; §4 lists what a judge checks before takeoff. |
+| The SUAS 2026 Team Handbook | Why the SUAS interface looks the way it does; §4 lists what a judge checks before takeoff. |

@@ -27,12 +27,15 @@ from competitions.suas.config import (
     BOUNDARY_CAUTION_FEET,
     BOUNDARY_CRITICAL_FEET,
     MISSING_VALUE_TEXT,
+    RIBBON_AIRSPEED_CAPTION,
+    RIBBON_AIRSPEED_FORMAT,
     RIBBON_ALTITUDE_CAPTION,
     RIBBON_ALTITUDE_FORMAT,
     RIBBON_ARMED_CAPTION,
     RIBBON_ARMED_TEXT,
     RIBBON_BATTERY_CAPTION,
     RIBBON_BATTERY_FORMAT,
+    RIBBON_BATTERY_SOURCE_FORMAT,
     RIBBON_BOUNDARY_CAPTION,
     RIBBON_BOUNDARY_FORMAT,
     RIBBON_BOUNDARY_OUTSIDE_TEXT,
@@ -84,6 +87,7 @@ class TelemetryRibbon(QWidget):
         self.mode_reading = Readout(RIBBON_MODE_CAPTION, parent=self)
         self.armed_reading = Readout(RIBBON_ARMED_CAPTION, parent=self)
         self.ground_speed_reading = Readout(RIBBON_GROUND_SPEED_CAPTION, parent=self)
+        self.airspeed_reading = Readout(RIBBON_AIRSPEED_CAPTION, parent=self)
         self.altitude_reading = Readout(RIBBON_ALTITUDE_CAPTION, parent=self)
         self.battery_reading = Readout(RIBBON_BATTERY_CAPTION, parent=self)
         self.gps_reading = Readout(RIBBON_GPS_CAPTION, parent=self)
@@ -97,6 +101,7 @@ class TelemetryRibbon(QWidget):
             self.mode_reading,
             self.armed_reading,
             self.ground_speed_reading,
+            self.airspeed_reading,
             self.altitude_reading,
             self.battery_reading,
             self.gps_reading,
@@ -135,8 +140,10 @@ class TelemetryRibbon(QWidget):
         self.show_mode(vehicle.mode)
         self.show_armed(vehicle.armed)
         self.show_ground_speed(vehicle.ground_speed_metres_per_second)
+        self.show_airspeed(vehicle.airspeed_metres_per_second)
         self.show_altitude(vehicle)
-        self.show_battery(vehicle.battery_voltage, vehicle.battery_percent)
+        self.show_battery(vehicle.battery_voltage, vehicle.battery_percent,
+                          vehicle.battery_source)
         self.show_gps(vehicle.gps_fix, vehicle.satellite_count)
 
     def show_mode(self, mode) -> None:
@@ -161,6 +168,16 @@ class TelemetryRibbon(QWidget):
         knots = metres_per_second_to_knots(metres_per_second)
         self.ground_speed_reading.set_value(RIBBON_GROUND_SPEED_FORMAT.format(knots=knots))
 
+    def show_airspeed(self, metres_per_second) -> None:
+        """What the operator flies by: metric first, the judge's knots beside it."""
+        if metres_per_second is None:
+            self.airspeed_reading.set_value(MISSING_VALUE_TEXT)
+            return
+        self.airspeed_reading.set_value(RIBBON_AIRSPEED_FORMAT.format(
+            metres_per_second=metres_per_second,
+            knots=metres_per_second_to_knots(metres_per_second),
+        ))
+
     def show_altitude(self, vehicle) -> None:
         """Prefer a reported terrain clearance; barometric height is not AGL."""
         if vehicle.terrain_clearance_metres is not None:
@@ -180,13 +197,17 @@ class TelemetryRibbon(QWidget):
         else:
             self.altitude_reading.set_state(STATE_NONE)
 
-    def show_battery(self, voltage, percent) -> None:
+    def show_battery(self, voltage, percent, source) -> None:
         if voltage is None or percent is None:
             self.battery_reading.set_value(MISSING_VALUE_TEXT)
             return
-        self.battery_reading.set_value(
-            RIBBON_BATTERY_FORMAT.format(voltage=voltage, percent=percent)
-        )
+
+        reading = RIBBON_BATTERY_FORMAT.format(voltage=voltage, percent=percent)
+        if source is not None:
+            reading += RIBBON_BATTERY_SOURCE_FORMAT.format(
+                source=source.upper()
+            )
+        self.battery_reading.set_value(reading)
 
     def show_gps(self, fix, satellites) -> None:
         if fix is None or satellites is None:

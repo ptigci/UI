@@ -5,16 +5,20 @@
 label = "SÜRÜ İHA"
 uses_drones = true
 uses_vtols = false
+supports_developer_mode = true
 
 [competitions.suas]
 label = "SUAS"
 uses_drones = false
 uses_vtols = true
+supports_developer_mode = true
 
 [competitions.uluslararasi]
 label = "ULUSLARARASI"
 uses_drones = true
 uses_vtols = true
+supports_developer_mode = true
+
 
 # The startup screen itself. The competition buttons take their text from the
 # labels above, so a competition is named in exactly one place.
@@ -25,6 +29,12 @@ vehicles_title = "VEHICLES"
 drone_count_text = "Drones"
 vtol_count_text = "VTOLs"
 continue_text = "CONTINUE"
+developer_title = "DEVELOPER"
+developer_mode_text = "Developer mode"
+developer_hint = "Adds a DEV tab that starts, stops and watches the vehicle software over SSH."
+# Developer mode is on unless it is turned off: the interface is used on the
+# bench far more often than in front of a jury.
+developer_mode_default = true
 
 [counts]
 drone_default = 3

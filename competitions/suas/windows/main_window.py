@@ -3,9 +3,12 @@
 Rule 3.0.6 makes the layout a compliance matter rather than a preference. The map
 carries the flight boundaries and the aircraft, the ribbon carries ground speed in
 knots and altitude in feet AGL, and the GCS judge has to be able to see all of it
-at any moment — so the map is never covered, there are no tabs and there are no
-modal dialogs. Rule 3.3 pays 200 points for running the mission with two
-operators, so everything the GCS Operator needs is on this one screen.
+at any moment — so the map is never covered. Rule 3.3 pays 200 points for
+running the mission with two operators, so everything the GCS Operator needs
+in flight is on that one page, the aircraft's own controls included. The
+calibrations are on a tab beside it (``dev_tab.py`` builds the tabs), used on
+the bench and before takeoff and never in front of a judge; developer mode
+adds the DEV and TEST tabs after it.
 
 MQTT arrives on the network thread and the safety link on its own reader thread;
 both are hopped onto the Qt thread by the signals below before any widget is
@@ -19,6 +22,9 @@ because one file was not enough to read them in.
     command_control.py   everything the operator sends — RTL, LAND, TERMINATE,
                          the delivery steps, the camera recording — and how each
                          one is confirmed
+    aircraft_controls.py the FLIGHT card and the CALIBRATION tab: the mission
+                         import, arming, the modes and the calibrations, and
+                         what the autopilot says back into the log under the map
 """
 
 import logging
@@ -41,7 +47,11 @@ from competitions.suas.config import (
 from competitions.suas.controller import SafetyLink, SuasController
 from competitions.suas.geometry import distance_metres, distance_to_polygon_metres, is_inside_polygon
 from competitions.suas.waypoint_plan import read_waypoint_file
+from competitions.suas.windows.aircraft_controls import AircraftControlsMixin
 from competitions.suas.windows.command_control import CommandControlMixin
+from competitions.suas.windows.dev_tab import DevTabMixin
+from competitions.suas.windows.test_presses import TestPressesMixin
+from competitions.suas.windows.test_tab import TestTabMixin
 from competitions.suas.windows.window_layout import WindowLayoutMixin
 from widgets.detection_review import Detection
 
@@ -50,7 +60,8 @@ logger = logging.getLogger(__name__)
 FORM_PATH = Path(__file__).resolve().parents[1] / "designer" / "main_window.ui"
 
 
-class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
+class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, AircraftControlsMixin,
+                     TestTabMixin, TestPressesMixin, DevTabMixin, QMainWindow):
 
     # Incoming data arrives off the Qt thread; these carry it across.
     telemetry_received = pyqtSignal()
@@ -65,10 +76,42 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
     video_frame_received = pyqtSignal(object)
     camera_changed = pyqtSignal()
     camera_command_answered = pyqtSignal(str, str)
+    mission_command_answered = pyqtSignal(str, str)
+    # The mosaic preview crosses as bytes, the same way a video frame does.
+    stitch_state_received = pyqtSignal(object)
+    route_changed = pyqtSignal()
+    targets_changed = pyqtSignal()
+    payload_changed = pyqtSignal()
     # The crop arrives as bytes on the MQTT thread; decoding to a QPixmap is
     # a Qt operation and has to happen on the Qt thread, so the bridge
     # carries the raw bytes across and the slot builds the picture.
     detection_received = pyqtSignal(object, object)
+
+    # The FLIGHT and CALIBRATION tabs: the autopilot's words, the answers to
+    # their presses, and where a calibration is.
+    autopilot_message = pyqtSignal(int, str)
+    command_result_received = pyqtSignal(str, bool, str)
+    calibration_progressed = pyqtSignal(dict)
+    aircraft_command_answered = pyqtSignal(str, str)
+    calibration_command_answered = pyqtSignal(str, str)
+
+    # The TEST tab's own reports, on the same hop for the same reason. The
+    # sighting carries its crop as bytes, like a detection card's.
+    gimbal_changed = pyqtSignal()
+    media_list_changed = pyqtSignal()
+    transfer_changed = pyqtSignal()
+    media_file_saved = pyqtSignal(str, object)
+    servos_changed = pyqtSignal()
+    waypoint_watch_changed = pyqtSignal()
+    mapping_progress_received = pyqtSignal()
+    detector_changed = pyqtSignal()
+    sighting_received = pyqtSignal(object, object)
+    camera_test_answered = pyqtSignal(str, str)
+    gimbal_answered = pyqtSignal(str, str)
+    watch_answered = pyqtSignal(str, str)
+    mapping_test_answered = pyqtSignal(str, str)
+    detector_answered = pyqtSignal(str, str)
+    route_answered = pyqtSignal(str, str)
 
     def __init__(self, selection) -> None:
         super().__init__()
@@ -79,6 +122,11 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
         self.pending_safety_command: str | None = None
         self.pending_safety_command_elapsed_ms = 0
         self.pending_flight_command_elapsed_ms: int | None = None
+        self.pending_mission_command_elapsed_ms: int | None = None
+        # Which of the two survey presses is in the air, so the answer says
+        # what the aircraft actually took.
+        self.pending_mission_accepted_text: str = ""
+        self.developer_mode = selection.developer_mode
 
         self.setWindowTitle(f"{WINDOW_TITLE} - {selection.competition.label}")
         self.build_layout()
@@ -156,11 +204,15 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
         # lap legal (3.7). Leaving this to the next mission message would show
         # "AUTO held" while the pilot was already flying it by hand.
         self.show_autonomy()
+        self.refresh_flying_state()
 
     def handle_mission_changed(self) -> None:
         lap_state = self.controller.lap_state
         self.lap_tracker.show_laps(lap_state)
         self.mission_clock.show_phase(lap_state.mission_phase)
+        self.mission_panel.show_phase(lap_state.mission_phase,
+                                      lap_state.mission_detail,
+                                      lap_state.flight_time_left_s)
         self.show_autonomy()
 
     def show_autonomy(self) -> None:
@@ -174,9 +226,14 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
             self.controller.waypoint_distance_metres,
         )
         self.telemetry_ribbon.show_waypoint_radius(self.controller.acceptance_radius_metres)
+        # The autopilot reports the item it is flying TO; the map draws that
+        # one larger and the ones before it as reached.
         self.map_view.show_waypoint_progress(
-            self.controller.waypoint_index, self.controller.acceptance_radius_metres
+            self.controller.waypoint_index,
+            self.controller.waypoint_total,
+            self.controller.acceptance_radius_metres,
         )
+        self.show_test_waypoint_progress()
 
     def handle_release_countdown(self) -> None:
         """Draw a fresh countdown the moment it lands, rather than on the next tick."""
@@ -189,13 +246,13 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
         The next one usually decodes, and a picture that flickers to NO PICTURE
         on one bad packet is worse than a picture that skips.
         """
-        if self.camera_panel is None:
-            return
-
         picture = self.crop_pixmap(image_bytes)
         if picture.isNull():
             return
-        self.camera_panel.show_frame(picture)
+
+        if self.camera_panel is not None:
+            self.camera_panel.show_frame(picture)
+        self.show_test_video_frame(picture)
 
     def handle_camera_changed(self) -> None:
         """Follow the aircraft's word on whether the camera is recording."""
@@ -204,6 +261,31 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
         camera = self.controller.camera
         self.camera_panel.show_recording(camera.recording, camera.reason)
 
+    def handle_stitch_state(self, image_bytes: bytes) -> None:
+        """Draw where the folder stitch stands, on the Qt thread."""
+        if self.mapping_panel is None:
+            self.show_test_stitch(self.crop_pixmap(image_bytes))
+            return
+        self.mapping_panel.show_stitch(self.controller.stitch,
+                                       self.crop_pixmap(image_bytes))
+        self.show_test_stitch(self.crop_pixmap(image_bytes))
+
+
+    def handle_route_changed(self) -> None:
+        """Draw the route the aircraft is about to fly."""
+        self.map_view.show_route(self.controller.route)
+        self.show_test_route()
+
+    def handle_targets_changed(self) -> None:
+        """Draw every track and every denied zone."""
+        tracks, zones = self.controller.targets.snapshot()
+        self.map_view.show_targets(tracks, zones)
+
+    def handle_payload_changed(self) -> None:
+        self.payload_panel.show_stations(self.controller.payload)
+        if self.drop_test_panel is not None:
+            self.drop_test_panel.show_stations(self.controller.payload)
+        self.show_test_stations()
 
     def show_distances(self, vehicle) -> None:
         """How far from the boundary, and how far from home."""
@@ -232,17 +314,26 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
         self.refresh_links()
         self.refresh_safety_command()
         self.refresh_flight_command()
+        self.refresh_mission_command()
         self.refresh_countdown()
         self.refresh_camera()
         self.refresh_broker_status()
+        self.refresh_mapping_clock()
+        self.refresh_test_pages()
 
     def refresh_links(self) -> None:
         safety_is_up = self.controller.links.safety_is_up()
-        mission_is_up = self.controller.mqtt_client.is_connected
+        mission_is_up = self.controller.links.mission_is_up()
         self.telemetry_ribbon.show_links(safety_is_up, mission_is_up)
         self.safety_panel.show_link(safety_is_up)
         if self.drop_test_panel is not None:
             self.drop_test_panel.show_link(safety_is_up)
+
+    def refresh_mapping_clock(self) -> None:
+        """The stitch clock keeps counting between messages."""
+        if self.mapping_panel is None:
+            return
+        self.mapping_panel.refresh_clock(self.controller.stitch)
 
     def refresh_countdown(self) -> None:
         """A countdown that stopped arriving stops being shown as a live number."""
@@ -257,11 +348,12 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
         asked on every tick whether the last one is still recent enough to be
         called live, and a frozen picture is replaced rather than left there.
         """
-        if self.camera_panel is None:
-            return
-
         camera = self.controller.camera
         if camera.picture_is_live():
+            return
+
+        self.show_test_no_picture(camera.has_had_a_picture())
+        if self.camera_panel is None:
             return
         self.camera_panel.show_no_picture(camera.has_had_a_picture())
 
@@ -289,3 +381,5 @@ class SuasMainWindow(WindowLayoutMixin, CommandControlMixin, QMainWindow):
     def closeEvent(self, event) -> None:
         self.safety_link.stop()
         super().closeEvent(event)
+        self.stop_developer_sessions()
+        self.close_test_logs()

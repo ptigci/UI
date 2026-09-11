@@ -7,9 +7,11 @@ JPEGs like everything else on this screen, already shrunk to something a broker
 can carry.
 
 The button is a different thing entirely and it is worth being clear about which
-is which. It starts and stops the camera's own recording, onto the card in the
-camera body, at full rate. That card is the only copy of a drop that did not go
-through a radio, and it is what gets reviewed afterwards. Stopping this
+is which. It starts and stops the recording, and one press asks for two copies
+of the same moment: the aircraft writing full-resolution frames to the Pi's card
+— each named with the position and attitude it was taken at, and each sent on to
+the ground services — and the A8 mini rolling its own card in its body at full
+rate. Between them they are what gets reviewed after a drop. Stopping the
 recording does not stop the picture below it, and losing the picture does not
 stop the recording.
 
@@ -25,7 +27,6 @@ from PyQt6.QtWidgets import QLabel
 from competitions.suas.config import (
     CAMERA_COMMAND_REJECTED_FORMAT,
     CAMERA_COMMAND_SENT_TEXT,
-    CAMERA_HOLD_HINT_TEXT,
     CAMERA_IDLE_TEXT,
     CAMERA_NO_SIGNAL_TEXT,
     CAMERA_PANEL_TITLE,
@@ -34,12 +35,11 @@ from competitions.suas.config import (
     CAMERA_STOP_TEXT,
     CAMERA_UNKNOWN_TEXT,
     CAMERA_WAITING_TEXT,
-    VIDEO_MINIMUM_HEIGHT,
+    VIDEO_HEIGHT,
 )
-from competitions.suas.widgets.hold_button import HoldButton
-from theme import set_role, set_state
+from competitions.suas.widgets.command_button import command_button
+from theme import set_state, set_variant
 from theme.tokens import (
-    ROLE_HINT,
     STATE_CAUTION,
     STATE_CRITICAL,
     STATE_NONE,
@@ -66,20 +66,16 @@ class CameraPanel(Card):
         self.add_header_widget(self.recording_pill)
 
         self.camera_view = CameraView(self)
-        self.camera_view.setMinimumHeight(VIDEO_MINIMUM_HEIGHT)
+        self.camera_view.setFixedHeight(VIDEO_HEIGHT)
 
-        self.record_button = HoldButton(CAMERA_RECORD_TEXT, VARIANT_PRIMARY, self)
-        self.record_button.held.connect(self.request_recording)
-
-        self.hint_label = QLabel(CAMERA_HOLD_HINT_TEXT, self)
-        set_role(self.hint_label, ROLE_HINT)
+        self.record_button = command_button(CAMERA_RECORD_TEXT, VARIANT_PRIMARY, self)
+        self.record_button.clicked.connect(self.request_recording)
 
         self.status_label = QLabel(self)
         self.status_label.setWordWrap(True)
 
         self.add_widget(self.camera_view)
         self.add_widget(self.record_button)
-        self.add_widget(self.hint_label)
         self.add_widget(self.status_label)
 
         self.recording = None
@@ -117,17 +113,17 @@ class CameraPanel(Card):
 
         if recording is None:
             self.recording_pill.show_status(CAMERA_UNKNOWN_TEXT, STATE_CAUTION)
-            self.record_button.button.setText(CAMERA_RECORD_TEXT)
+            self.record_button.setText(CAMERA_RECORD_TEXT)
             self.set_state(STATE_NONE)
         elif recording:
             self.recording_pill.show_status(CAMERA_RECORDING_TEXT, STATE_CRITICAL)
-            self.record_button.button.setText(CAMERA_STOP_TEXT)
-            self.record_button.set_variant(VARIANT_CAUTION)
+            self.record_button.setText(CAMERA_STOP_TEXT)
+            set_variant(self.record_button, VARIANT_CAUTION)
             self.set_state(STATE_CRITICAL)
         else:
             self.recording_pill.show_status(CAMERA_IDLE_TEXT, STATE_NONE)
-            self.record_button.button.setText(CAMERA_RECORD_TEXT)
-            self.record_button.set_variant(VARIANT_PRIMARY)
+            self.record_button.setText(CAMERA_RECORD_TEXT)
+            set_variant(self.record_button, VARIANT_PRIMARY)
             self.set_state(STATE_NONE)
 
         if reason:

@@ -17,6 +17,12 @@ calibrate_tau = "ui/drone/calibrate_tau"
 # Command latency measurement for the synchronized start; per-drone, outside
 # missions, and it spins the motors, so the propellers must be off.
 calibrate_latency = "ui/drone/calibrate_latency"
+# The HSV band measured in the color calibration window; per drone.
+calibrate_color = "ui/drone/calibrate_color"
+white_balance = "ui/drone/white_balance"
+# Where a drone is standing right now, written into the drone config as the
+# ground position of the picked QR; per drone, outside missions.
+qr_location = "ui/drone/qr_location"
 formation    = "ui/swarm/formation"
 mission1     = "swarm/mission/mission1"
 mission2     = "swarm/mission/mission2"
@@ -25,6 +31,10 @@ mission_plan     = "ui/swarm/mission_plan"
 mission_plan_run = "ui/swarm/mission_plan_run"
 emergency    = "emergency"
 free         = "test"
+# Probe the mesh from every node for a few seconds; outside missions only.
+link_test    = "ui/swarm/link_test"
+# Move every node's bridge to a new mesh channel for good; outside missions only.
+mesh_channel = "ui/swarm/mesh_channel"
 # Operator verdicts for VTOL object-detection frames.
 object_detection_approve = "vtol/object_detection/approve"
 object_detection_cancel  = "vtol/object_detection/cancel"
@@ -39,7 +49,7 @@ camera    = "drone/+/camera"
 state     = "drone/+/state"
 # Pre-flight GPS health reports.
 health    = "drone/+/health"
-# Periodic PPS clock reports: whether chrony has the companion clock in sync.
+# Periodic clock reports: what is steering each companion clock.
 clock     = "drone/+/clock"
 # How far each drone has got through the uploaded mission plan.
 plan_status = "drone/+/plan_status"
@@ -51,6 +61,24 @@ color_zone = "drone/color_zone"
 object_detection = "vtol/object_detection/frame"
 # Every message the ground station sends to the ESP, mirrored for the terminal.
 esp_log   = "computer/esp_log"
+# The finished link test: one row per pair of the mesh, and the file it went to.
+link_test = "computer/link_test"
+# Which drones have reported the mission 2 start or stop, and which the ground
+# station is still sending it to.
+mission2_status = "computer/mission2_status"
+
+# Values sent in the "source" field of the clock report. These must match
+# what drone/sync/clock_source.py publishes.
+[mqtt.clock_sources]
+# This drone's own GPS pulse is steering its clock.
+pps  = "pps"
+# Its own pulse is down, so it follows a sibling drone that still has one.
+peer = "peer"
+# Nothing is steering its own clock, so it reads the swarm's off the mesh
+# beacons and stays in step with everyone else.
+swarm = "swarm"
+# Nothing trustworthy is steering it.
+none = "none"
 
 # Values sent in the "formation" field of the formation payload.
 # These must match what drone/formations.py understands.

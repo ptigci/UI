@@ -1,0 +1,63 @@
+# The color calibration window: the operator drags a box over a painted circle
+# in one drone's camera view, and the HSV band under it is sent to that drone.
+
+[color_calibration]
+window_title = "Color calibration"
+card_title = "COLOR CALIBRATION"
+hint = """WHITE BALANCE first, once per drone per session — the bands are measured through it.
+Then drag a box over the painted circle — only the circle, no grass, no shadow, no glare.
+The view freezes while a box is drawn; CLEAR goes back to the live picture.
+CALIBRATE measures this box on its own. ADD measures it into what was already
+taken, so the same circle can be measured in sun and again under cloud."""
+waiting_text = "Waiting for this drone's camera stream"
+no_selection_text = "Draw a box over the colored circle first."
+no_color_text = "Those pixels have no colour at all — select part of the circle itself."
+# Colors the operator can calibrate. The names must match colors.ranges in
+# drone/config/color_detection.yaml; the drone rejects anything else.
+colors = ["red", "blue"]
+# The window is opened over the main window, so it carries its own size.
+window_width = 720
+window_height = 620
+# Turning the selected pixels into a band. The extremes go first: a few pixels
+# of grass or a glare stripe caught at the edge of the box would otherwise
+# stretch the band far enough to match half the field.
+trim_percent = 5
+# What is left is widened again, because the band has to survive the next hour.
+# The stream is a 320x240 JPEG and the sun keeps moving, so a band that only
+# just fits the pixels on screen stops matching the same circle later on.
+#
+# The widening only goes downwards, and further on value than on saturation.
+# Hue and saturation are both ratios between the red, green and blue a pixel
+# carries, so the light going away leaves them roughly where they were; value
+# is the one that carries the light itself and falls with it. Neither channel
+# needs a ceiling below its maximum either — there is nothing above a fully
+# saturated or a fully bright pixel that wants keeping out.
+hue_margin = 5
+saturation_margin = 80
+# The value floor is a share of what was measured rather than a count taken off
+# it, because light is multiplicative: a cloud halves every value in the picture
+# instead of subtracting a fixed amount. Ninety counts below a circle measured
+# at 190 covers one stop and not the second, and reads as generous right up
+# until the afternoon it is not. A third of it covers about a stop and a half,
+# and the camera's own brightness hold covers the rest.
+value_floor_ratio = 0.3
+# The saturation floor never drops below this, whatever a calibration measured.
+# It is the one number holding grey ground out of the mask: hue means nothing
+# on a pixel with no colour in it, so asphalt, dry grass and deep shadow all
+# carry whatever hue the noise gives them and half of them land in the band. A
+# calibration taken in poor light reads saturations that are low and scattered,
+# and the trimmed floor would follow them all the way down. The value floor may
+# go as low as it likes; this one may not.
+minimum_saturation = 70
+# Pixels are read one at a time, so a big box is subsampled to this many
+# before it is measured. It bounds the wait after the button press.
+max_sample_pixels = 20000
+
+# The window's own buttons. The one on the drone tab that opens it is a
+# QPushButton in designer/drone_panel.ui and carries its label there.
+[color_calibration.buttons]
+clear = "CLEAR"
+white_balance = "WHITE BALANCE"
+calibrate = "CALIBRATE"
+add = "ADD"
+close = "CLOSE"

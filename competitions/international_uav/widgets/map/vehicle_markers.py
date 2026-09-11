@@ -7,9 +7,10 @@ from PyQt6.QtGui import QBrush, QColor, QPen, QPolygonF
 
 from competitions.international_uav.config import (
     MAP_COLORS,
+    MAP_HEADING_ARROW_LENGTH,
+    MAP_HEADING_ARROW_WIDTH,
     MAP_LABEL_OFFSET,
     MAP_TRACK_WIDTH,
-    MAP_VEHICLE_HEADING_LENGTH,
     MAP_VEHICLE_MARKER_RADIUS,
 )
 
@@ -43,7 +44,7 @@ def draw_vehicle(painter, projection, vehicle) -> None:
     painter.drawEllipse(position, MAP_VEHICLE_MARKER_RADIUS, MAP_VEHICLE_MARKER_RADIUS)
 
     if vehicle.heading is not None:
-        painter.drawLine(position, heading_point(position, vehicle.heading))
+        painter.drawPolygon(heading_arrow(position, vehicle.heading))
 
     painter.setPen(QPen(QColor(MAP_COLORS["label"]), 1))
     painter.drawText(
@@ -59,10 +60,18 @@ def vehicle_color(vehicle) -> str:
     return MAP_COLORS["agent"]
 
 
-def heading_point(position: QPointF, heading_degrees: float) -> QPointF:
-    """Tip of the heading line: 0° is north, angles grow clockwise."""
+def heading_arrow(position: QPointF, heading_degrees: float) -> QPolygonF:
+    """A triangle out of the marker, its tip along the heading.
+
+    0° is north, angles grow clockwise. The base sits across the marker's
+    centre so the arrow reads as part of the dot rather than a line beside it.
+    """
     heading_radians = math.radians(heading_degrees)
-    return QPointF(
-        position.x() + math.sin(heading_radians) * MAP_VEHICLE_HEADING_LENGTH,
-        position.y() - math.cos(heading_radians) * MAP_VEHICLE_HEADING_LENGTH,
-    )
+    along = QPointF(math.sin(heading_radians), -math.cos(heading_radians))
+    across = QPointF(-along.y(), along.x())
+    half_width = MAP_HEADING_ARROW_WIDTH / 2
+    return QPolygonF([
+        position + along * MAP_HEADING_ARROW_LENGTH,
+        position + across * half_width,
+        position - across * half_width,
+    ])

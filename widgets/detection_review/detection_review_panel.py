@@ -174,4 +174,4 @@ class DetectionReviewPanel(QWidget):
                 index=self.detection_index + 1, count=detection_count
             )
         )
-        self.detectionview.show_pixmap(detection.image)
+        self.detectionview.show_still(detection.image)

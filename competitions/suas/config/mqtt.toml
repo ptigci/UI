@@ -26,9 +26,34 @@ release_countdown = "suas/payload/countdown"
 camera_state = "suas/camera/state"
 video_frame = "suas/video/frame"
 mapping_progress = "suas/mapping/progress"
+stitch_state = "suas/stitch/state"
+route_plan = "suas/route/plan"
 health_link = "suas/health/link"
 health_system = "suas/health/system"
 command_ack = "suas/command/ack"
+# What the autopilot says in words: a refused arm, a fence breach, every
+# "Mission: ..." line. Then the answer to an aircraft command or a mission
+# upload once the outcome is known, and where a running calibration is.
+statustext = "suas/telemetry/statustext"
+command_result = "suas/command/result"
+calibration_progress = "suas/calibration/progress"
+# The DEV tab's link test: the aircraft echoes each probe back through the
+# ground services.
+link_probe_reply = "suas/link/probe_reply"
+# The TEST tab. Where the gimbal is looking, what is on the camera's card
+# and how a copy of it is going, where each release servo was left, and
+# which waypoint armed the scan.
+gimbal_state = "suas/gimbal/state"
+camera_media_list = "suas/camera/media_list"
+camera_media_chunk = "suas/camera/media_chunk"
+camera_transfer = "suas/camera/transfer"
+payload_servo = "suas/payload/servo"
+waypoint_watch = "suas/mission/waypoint_watch"
+# What the detector is doing, and every sighting it makes. A sighting is
+# not a detection card: a card is a fused track the aircraft is ready to
+# deliver on, and this is one frame the model scored.
+detector_state = "suas/detector/state"
+detector_sighting = "suas/detector/sighting"
 
 [mqtt.topics.publish]
 mission_command = "suas/command/mission"
@@ -39,6 +64,26 @@ blacklist_clear = "suas/target/blacklist_clear"
 payload_command = "suas/payload/command"
 camera_command = "suas/camera/command"
 mapping_request = "suas/mapping/request"
+stitch_request = "suas/stitch/request"
+mapping_export = "suas/mapping/export"
+# The aircraft's own controls on the FLIGHT card: arm, a mode, start the
+# mission. A mission exported from Mission Planner, item by item, to be
+# uploaded. Start, step or cancel one calibration on the CALIBRATION tab.
+# Every one is answered on command_ack first and on command_result after.
+aircraft_command = "suas/command/aircraft"
+mission_upload = "suas/mission/upload"
+calibration_command = "suas/calibration/command"
+# One probe of the DEV tab's link test.
+link_probe = "suas/link/probe"
+# The TEST tab: where to point the camera, and which two waypoints start
+# and end the scan.
+gimbal_command = "suas/gimbal/command"
+waypoint_watch_command = "suas/mission/waypoint_watch_command"
+# A drop on a place the operator names rather than a target the aircraft
+# found: plan a route to it, look at it, then fly it.
+route_command = "suas/route/command"
+# The detection bench: which detector runs and how sure it has to be.
+detector_command = "suas/detector/command"
 
 [payloads.telemetry]
 # These are the aircraft's spellings, from SUAS/vtol/shared/protocol/config/
@@ -51,11 +96,16 @@ longitude = "longitude"
 altitude_agl_metres = "altitude_agl_m"
 altitude_amsl_metres = "altitude_amsl_m"
 ground_speed_metres_per_second = "groundspeed_ms"
+airspeed_metres_per_second = "airspeed_ms"
 heading_degrees = "heading_deg"
 mode = "flight_mode"
 armed = "armed"
 battery_voltage = "battery_voltage"
 battery_percent = "battery_percent"
+# Which of the two the figures came from: "pixhawk" is the autopilot's own
+# estimate, "adc" is the Pi measuring the pack directly. It is shown because a
+# silent failover from one to the other changes what the number is worth.
+battery_source = "battery_source"
 gps_fix = "gps_fix"
 satellite_count = "satellites"
 
@@ -71,11 +121,18 @@ acceptance_radius_metres = "acceptance_radius_m"
 
 [payloads.mission]
 state = "state"
+# The aircraft's own one-line reason for the state it is in: which waypoint
+# started the scan, which mode it was taken over in, why it stood down.
+detail = "detail"
 laps_completed = "laps_completed"
 lap_waypoint_index = "lap_waypoint_index"
 lap_valid = "lap_valid"
 lap_invalid_reason = "lap_invalid_reason"
 laps_locked = "laps_locked"
+# Seconds flown since the takeoff, and what is left of the flight the second
+# look at the unanswered targets may use. Missing until the aircraft has a clock.
+flight_time_s = "flight_time_s"
+flight_time_left_s = "flight_time_left_s"
 
 [payloads.target]
 # What the aircraft puts on suas/target/detected. These are OUR wire names --
@@ -90,6 +147,77 @@ longitude = "longitude"
 image_base64 = "image_base64"
 frame_timestamp = "frame_timestamp"
 decision_state = "decision_state"
+# The numbers the aircraft chooses by, shown on the card so the operator sees
+# the same figures: how many frames saw it, the average score, the score under
+# the configured rule, and which payload would go to it.
+average_confidence = "average_confidence"
+observation_count = "observation_count"
+score = "score"
+bound_station = "bound_station"
+
+[payloads.track]
+# Every fused target on suas/target/track, drawn on the map.
+track_id = "track_id"
+target_class = "target_class"
+latitude = "latitude"
+longitude = "longitude"
+decision_state = "decision_state"
+score = "score"
+
+[payloads.blacklist]
+# suas/target/blacklist: every zone a denial closed, as a list.
+zones = "zones"
+
+[payloads.blacklist_zone]
+zone_id = "zone_id"
+target_class = "target_class"
+latitude = "latitude"
+longitude = "longitude"
+radius_metres = "radius_m"
+
+[payloads.route]
+# suas/route/plan: the route the aircraft is about to fly, drawn on the map.
+route_id = "route_id"
+track_id = "track_id"
+target_class = "target_class"
+release_style = "release_style"
+waypoints = "waypoints"
+hover_point = "hover_point"
+release_point = "release_point"
+length_metres = "length_m"
+estimated_time_seconds = "estimated_time_s"
+# Whether the route is still waiting to be looked at. A route to a place the
+# operator named arrives as "proposed" and nothing moves until it is approved;
+# a route the aircraft planned for a target it found is "approved" already,
+# because nobody was asked.
+state = "state"
+reason = "reason"
+station = "station"
+
+[payloads.route_point]
+latitude = "latitude"
+longitude = "longitude"
+
+[payloads.payload_state]
+# suas/payload/state: the stations keyed by name.
+stations = "stations"
+
+[payloads.station]
+target_class = "target_class"
+state = "state"
+released_track_id = "released_track_id"
+
+[codes.target_decision_state]
+# What the aircraft says about a track, spelled in SUAS/vtol/targets.
+pending = "pending"
+approved = "approved"
+denied = "denied"
+delivered = "delivered"
+
+[codes.station_state]
+loaded = "loaded"
+armed = "armed"
+spent = "spent"
 
 [payloads.release_countdown]
 # What the aircraft puts on suas/payload/countdown while a delivery is being set
@@ -105,21 +233,47 @@ heading_error_degrees = "heading_error_deg"
 release_allowed = "release_allowed"
 reason = "reason"
 
+[payloads.mission_command]
+# What goes out on suas/command/mission.
+command_id = "command_id"
+action = "action"
+
+[codes.mission_command]
+# Mirrored from the aircraft's commands.toml [mission].
+abort = "abort"
+start_survey = "start_survey"
+finish_survey = "finish_survey"
+
 [payloads.flight_command]
 # What goes back on suas/command/flight, one press at a time.
 command_id = "command_id"
 action = "action"
+# Which bay a RELEASE press means. Each bay has its own servo, so the ground
+# station has one button per bay. Left out of a press that does not name one,
+# where the target being hovered over decides the bay instead.
+station = "station"
 
 [payloads.camera_state]
-# Whether the A8 mini is recording to its own card. It is retained, so this is
-# also what a GCS started mid-flight is told the moment it subscribes.
+# Whether the aircraft is recording. It follows the frames the Pi writes to its
+# own card, which is the copy the aircraft's software writes and can count --
+# the A8 mini's card is asked for by the same press and is a toggle nobody can
+# confirm. Retained, so this is also what a GCS started mid-flight is told the
+# moment it subscribes.
+#
+# The aircraft sends a session id and two counters with it. Nothing here reads
+# them yet; they are what a "3412 frames" line under the REC light would be
+# drawn from.
 recording = "recording"
 reason = "reason"
 
 [payloads.camera_command]
-# Start or stop that recording.
+# Start or stop that recording, and everything the TEST tab's camera page asks
+# for. `rate_hz` belongs to the photo timers; `file_names` names the files on
+# the camera's card a fetch should copy.
 command_id = "command_id"
 action = "action"
+rate_hz = "rate_hz"
+file_names = "file_names"
 
 [payloads.video_frame]
 # One preview frame, published by the ground services and never by the
@@ -134,6 +288,46 @@ frame_timestamp = "frame_timestamp"
 start_recording = "start_recording"
 stop_recording = "stop_recording"
 
+[payloads.stitch_request]
+# What goes out on suas/stitch/request: a folder of recorded frames for the
+# ground services to stitch. The path is read on their machine, not this one.
+command_id = "command_id"
+folder_path = "folder_path"
+
+[payloads.stitch_state]
+# How that stitch is going, published back by the ground services on
+# suas/stitch/state. The picture is a shrunk preview; the full mosaic stays on
+# their disk under `mosaic_path`.
+state = "state"
+reason = "reason"
+folder_path = "folder_path"
+frames_found = "frames_found"
+frames_skipped = "frames_skipped"
+# How far through the frames the stitch has got, resent while it runs. Both are
+# absent until the first frame goes down, and a stitching backend that cannot
+# count its way through the frames never sends them at all -- so the bar goes
+# busy rather than empty when they are missing.
+frames_placed = "frames_placed"
+frames_to_place = "frames_to_place"
+frames_used = "frames_used"
+mosaic_path = "mosaic_path"
+image_base64 = "image_base64"
+# The live session: how many frames the ground has, and the clock. The
+# ground says how long the stitch has run as of the message; the panel keeps
+# counting from there.
+frames_received = "frames_received"
+started_at = "started_at"
+elapsed_seconds = "elapsed_s"
+export_path = "export_path"
+
+[codes.stitch_state]
+# What `state` may say, spelled in the ground services'
+# SUAS/computer/config/folder_stitch.toml.
+running = "running"
+complete = "complete"
+failed = "failed"
+exported = "exported"
+
 [payloads.command_ack]
 # The aircraft's answer to a press, on suas/command/ack. `status` is the field
 # that matters: a press that was sent and a press that was acted on are
@@ -147,6 +341,7 @@ reason = "reason"
 # Which release the countdown is describing, spelled as `mode` in the
 # aircraft's SUAS/vtol/config/payload.toml.
 winch = "winch"
+parachute = "parachute"
 ballistic = "ballistic"
 
 [codes.command_ack]
@@ -168,6 +363,19 @@ operator_id = "operator_id"
 approve = "approve"
 deny = "deny"
 
+[payloads.link_probe]
+# What goes out on suas/link/probe: a number to match the reply by and the
+# laptop's clock when it left.
+probe_id = "probe_id"
+sent_at = "sent_at"
+
+[payloads.link_probe_reply]
+# The aircraft's echo on suas/link/probe_reply: the probe as sent, plus the
+# aircraft's own clock when it saw it.
+probe_id = "probe_id"
+sent_at = "sent_at"
+aircraft_time = "aircraft_time"
+
 [payloads.link]
 mission_link_up = "mission_link_up"
 mission_link_loss_percent = "mission_link_loss_percent"
@@ -184,10 +392,372 @@ safety_heartbeat_age_ms = "safety_heartbeat_age_ms"
 # Arming, taking off and landing are deliberately not here: this application
 # never arms the aircraft, and landing goes over the direct MAVLink link with
 # RTL — see config/safety.toml.
+#
+# `hold` is not a step of the delivery. It is the press that clamps a loaded bay
+# shut: the aircraft drives no servo when it starts up, so nothing holds the
+# payload until this goes out. Every mode takes it, the winged one included.
 goto_target = "goto_target"
 release = "release"
+hold = "hold"
 finish = "finish"
 
 [codes.mode]
 # The lap only counts while the autopilot holds this mode (3.7).
 autonomous = "AUTO"
+
+[codes.camera_test_command]
+# The TEST tab's camera page, mirrored from the aircraft's commands.toml
+# [camera_test]. Two columns of the same four presses, because a picture can be
+# kept in two places and they fail differently: `stream_*` is the 1080p RTSP
+# picture the Pi reads and writes to its own card, `card_*` is the 4K microSD
+# card inside the camera that the Pi never sees.
+stream_start_video = "stream_start_video"
+stream_stop_video = "stream_stop_video"
+stream_take_photo = "stream_take_photo"
+stream_start_photo_timer = "stream_start_photo_timer"
+stream_stop_photo_timer = "stream_stop_photo_timer"
+card_start_video = "card_start_video"
+card_stop_video = "card_stop_video"
+card_take_photo = "card_take_photo"
+card_start_photo_timer = "card_start_photo_timer"
+card_stop_photo_timer = "card_stop_photo_timer"
+card_list_files = "card_list_files"
+card_fetch_files = "card_fetch_files"
+card_watch_on = "card_watch_on"
+card_watch_off = "card_watch_off"
+send_photos_on = "send_photos_on"
+send_photos_off = "send_photos_off"
+send_videos_on = "send_videos_on"
+send_videos_off = "send_videos_off"
+
+[payloads.gimbal_command]
+# Where to point the camera. Absolute angles in the airframe's terms, the way
+# the gimbal reports them back, so a press and the reading under it are the
+# same number.
+command_id = "command_id"
+action = "action"
+yaw_degrees = "yaw_deg"
+pitch_degrees = "pitch_deg"
+zoom = "zoom"
+
+[codes.gimbal_command]
+point = "point"
+centre = "centre"
+zoom_to = "zoom_to"
+stop = "stop"
+
+[payloads.gimbal_state]
+# What the camera says about itself. Every angle here is one it reported, not
+# one it was asked for -- a gimbal that echoes the command back is a gimbal
+# that is not moving, and catching that is what the page is for.
+reachable = "reachable"
+yaw_degrees = "yaw_deg"
+pitch_degrees = "pitch_deg"
+roll_degrees = "roll_deg"
+zoom = "zoom"
+recording = "recording"
+card_state = "card_state"
+card_free_megabytes = "card_free_megabytes"
+stream_up = "stream_up"
+reason = "reason"
+
+[payloads.camera_media_list]
+# What is on the camera's card.
+files = "files"
+photo_count = "photo_count"
+video_count = "video_count"
+reason = "reason"
+
+[payloads.camera_media_file]
+# One entry of that list.
+name = "name"
+kind = "kind"
+size_bytes = "size_bytes"
+url = "url"
+fetched = "fetched"
+
+[codes.camera_media_kind]
+photo = "photo"
+video = "video"
+
+[payloads.camera_media_chunk]
+# One slice of one file on its way down. A 4K still is several megabytes on a
+# shared 2.4 GHz link, so a file arrives in pieces and is put back together
+# here -- which is also what makes the progress bar honest.
+file_name = "file_name"
+kind = "kind"
+chunk_index = "chunk_index"
+chunk_count = "chunk_count"
+size_bytes = "size_bytes"
+data_base64 = "data_base64"
+
+[payloads.camera_transfer]
+# How that copy is going, so the bar moves between chunks.
+state = "state"
+file_name = "file_name"
+files_done = "files_done"
+files_total = "files_total"
+bytes_done = "bytes_done"
+bytes_total = "bytes_total"
+sending_photos = "sending_photos"
+sending_videos = "sending_videos"
+watching = "watching"
+reason = "reason"
+
+[codes.camera_transfer_state]
+idle = "idle"
+listing = "listing"
+fetching = "fetching"
+complete = "complete"
+failed = "failed"
+
+[payloads.payload_servo]
+# Where each release servo was last driven, for the drop page's monitor.
+stations = "stations"
+
+[payloads.servo_station]
+station = "station"
+state = "state"
+pwm_us = "pwm_us"
+servo_output = "servo_output"
+simulated = "simulated"
+moved_at = "moved_at"
+
+[codes.servo_state]
+# What the aircraft last drove the servo to. "unknown" is a real answer: the
+# aircraft drives no servo when it starts, so a station nobody has pressed has
+# genuinely never been anywhere.
+clamped = "clamped"
+locked = "locked"
+released = "released"
+unknown = "unknown"
+
+[payloads.waypoint_watch_command]
+# Arm the scan on a mission item, from the TEST tab.
+command_id = "command_id"
+action = "action"
+waypoint_index = "waypoint_index"
+
+[codes.waypoint_watch_command]
+set_start = "set_start"
+set_finish = "set_finish"
+clear = "clear"
+
+[payloads.waypoint_watch]
+# Which items the scan is armed on, where the aircraft is in the mission, and
+# which item last fired -- which is what puts START or STOP on the screen.
+start_index = "start_index"
+finish_index = "finish_index"
+waypoint_index = "waypoint_index"
+waypoint_count = "waypoint_count"
+triggered = "triggered"
+triggered_index = "triggered_index"
+triggered_at = "triggered_at"
+reason = "reason"
+
+[codes.waypoint_trigger]
+start = "start"
+finish = "finish"
+
+[payloads.mapping_request]
+# suas/mapping/request -- what the TEST tab's mapping page asks of the aircraft.
+command_id = "command_id"
+action = "action"
+frame_ids = "frame_ids"
+
+[codes.mapping_request]
+# Mirrored from the aircraft's commands.toml [mapping_request]. The stitch is
+# not here: it happens on the ground services and goes out on stitch_request.
+resend = "resend"
+start_capture = "start_capture"
+stop_capture = "stop_capture"
+
+[payloads.mapping_progress]
+# How the capture is going while it runs: what the aircraft has taken, what is
+# still queued on it, and what has made it down the link. A capture that is
+# taking frames while `frames_sent` sits still is a link problem, and that is
+# worth being able to see from the ground before the flight ends.
+frames_captured = "frames_captured"
+frames_queued = "frames_queued"
+frames_sent = "frames_sent"
+session_id = "session_id"
+
+[payloads.route_command]
+# suas/route/command -- a delivery on a place the operator named. PLAN carries
+# the place, APPROVE and REJECT carry the route being answered.
+command_id = "command_id"
+action = "action"
+route_id = "route_id"
+latitude = "latitude"
+longitude = "longitude"
+altitude_agl_metres = "altitude_agl_m"
+# How close to the place counts as arrived. Left out to keep whatever the
+# aircraft's own radius is.
+acceptance_radius_metres = "acceptance_radius_m"
+station = "station"
+
+[codes.route_command]
+plan = "plan"
+approve = "approve"
+reject = "reject"
+# Plan it, fly it and drop, in one press with nobody asked in between.
+plan_and_drop = "plan_and_drop"
+
+[codes.route_state]
+# Mirrored from the aircraft's route settings, the same way the target decision
+# states are. A route sits at "proposed" until somebody answers it.
+proposed = "proposed"
+approved = "approved"
+flying = "flying"
+rejected = "rejected"
+done = "done"
+
+[payloads.detector_command]
+command_id = "command_id"
+action = "action"
+backend = "backend"
+minimum_confidence = "minimum_confidence"
+
+[codes.detector_command]
+start = "start"
+stop = "stop"
+set_backend = "set_backend"
+set_minimum_confidence = "set_minimum_confidence"
+
+[codes.detector_backend]
+# The three detectors, spelled the way the aircraft's perception module spells
+# them. Mirrored from the aircraft's commands.toml [detector_backend].
+hailo = "hailo"
+yolo = "yolo"
+qr = "qr"
+
+[payloads.detector_state]
+# `backend` is the detector that actually loaded, which is not always the one
+# asked for: a Hailo that will not open falls back, and a bench that could not
+# see the difference would be measuring the wrong model.
+running = "running"
+backend = "backend"
+requested_backend = "requested_backend"
+minimum_confidence = "minimum_confidence"
+frames_per_second = "frames_per_second"
+frames_seen = "frames_seen"
+sightings = "sightings"
+reason = "reason"
+
+[payloads.detector_sighting]
+# One thing the model saw in one frame. The place may be absent: a sighting
+# with no attitude behind it has a score and nowhere to put it. What the
+# projection was given -- the aircraft's position, height, attitude, the
+# gimbal's angles, the frame size -- rides along as one nested table, so the
+# sighting can be kept here and its place worked out again later.
+sighting_id = "sighting_id"
+target_class = "target_class"
+confidence = "confidence"
+latitude = "latitude"
+longitude = "longitude"
+position_error_m = "position_error_m"
+projection_inputs = "projection_inputs"
+image_base64 = "image_base64"
+frame_timestamp = "frame_timestamp"
+backend = "backend"
+
+[payloads.statustext]
+# One line from the autopilot on suas/telemetry/statustext. MAVLink's own
+# severity numbers: 0 is an emergency, 7 is debug.
+severity = "severity"
+text = "text"
+
+[payloads.command_result]
+# The outcome of an aircraft command or a mission upload on
+# suas/command/result, once the aircraft knows it. `command` is the action
+# it answers for; the upload answers under upload_mission.
+command_id = "command_id"
+command = "command"
+accepted = "accepted"
+detail = "detail"
+
+[payloads.aircraft_command]
+# What goes out on suas/command/aircraft. The mode is only sent with set_mode.
+command_id = "command_id"
+action = "action"
+flight_mode = "flight_mode"
+
+[payloads.mission_upload]
+# What goes out on suas/mission/upload: one entry per line of a Mission
+# Planner export, in the units MAVLink's mission item takes.
+command_id = "command_id"
+items = "items"
+
+[payloads.mission_item]
+sequence = "seq"
+frame = "frame"
+command = "command"
+param1 = "param1"
+param2 = "param2"
+param3 = "param3"
+param4 = "param4"
+latitude = "latitude"
+longitude = "longitude"
+altitude_metres = "altitude_m"
+autocontinue = "autocontinue"
+
+[payloads.calibration_command]
+# What goes out on suas/calibration/command.
+command_id = "command_id"
+calibration = "calibration"
+action = "action"
+
+[payloads.calibration_progress]
+# Where a calibration is, on suas/calibration/progress. The step is the
+# sentence the operator follows, the percent fills the bar, the detail is
+# whatever number came with it.
+calibration = "calibration"
+state = "state"
+step = "step"
+percent = "percent"
+detail = "detail"
+
+[payloads.aircraft_bus]
+# Every command on the three topics above carries the laptop's clock when it
+# left, so the aircraft's log can be read against ours.
+timestamp = "timestamp"
+
+[codes.aircraft_command]
+# What the FLIGHT card can ask of the aircraft itself. upload_mission is never
+# sent as an action; it is the name the mission upload answers under.
+arm = "arm"
+force_arm = "force_arm"
+force_disarm = "force_disarm"
+start_mission = "start_mission"
+set_mode = "set_mode"
+upload_mission = "upload_mission"
+
+[codes.flight_mode]
+# The modes set_mode may ask for, by ArduPlane's own names.
+manual = "MANUAL"
+auto = "AUTO"
+qstabilize = "QSTABILIZE"
+rtl = "RTL"
+qrtl = "QRTL"
+qland = "QLAND"
+
+[codes.calibration]
+# The calibrations the CALIBRATION tab can run, what it can do to one, and
+# where one is. "waiting" means the aircraft waits for the operator's NEXT.
+compass = "compass"
+rc = "rc"
+accel = "accel"
+accel_simple = "accel_simple"
+motors = "motors"
+
+[codes.calibration_action]
+start = "start"
+next = "next"
+cancel = "cancel"
+
+[codes.calibration_state]
+running = "running"
+waiting = "waiting"
+done = "done"
+failed = "failed"
+cancelled = "cancelled"

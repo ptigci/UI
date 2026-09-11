@@ -13,7 +13,6 @@ from PyQt6.QtWidgets import (
     QLabel,
     QListWidget,
     QListWidgetItem,
-    QMessageBox,
     QPushButton,
 )
 
@@ -34,8 +33,6 @@ from competitions.international_uav.config import (
     TARGET_ROW_FORMAT,
     TARGET_SORT_LABELS,
     TARGET_STATE_FORMAT,
-    VETO_CONFIRM_QUESTION,
-    VETO_CONFIRM_TITLE,
     VETO_TEXT,
 )
 from theme import flush_layout, set_role, set_variant
@@ -223,15 +220,7 @@ class TargetPanel(Card):
         target = self.selected_target()
         if target is None:
             return
-        confirmed = QMessageBox.question(
-            self,
-            VETO_CONFIRM_TITLE,
-            VETO_CONFIRM_QUESTION.format(target_id=target.target_id),
-            QMessageBox.StandardButton.Yes | QMessageBox.StandardButton.No,
-            QMessageBox.StandardButton.No,
-        )
-        if confirmed == QMessageBox.StandardButton.Yes:
-            self.veto_requested.emit(target.target_id)
+        self.veto_requested.emit(target.target_id)
 
     def request_requeue(self) -> None:
         target = self.selected_target()

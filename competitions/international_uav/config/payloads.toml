@@ -13,6 +13,10 @@ battery_percent = "battery_percent"
 battery_voltage = "battery_voltage"
 gps_fix = "gps_fix"
 rtk_status = "rtk"
+# The mission item the Pasifik's autopilot is flying to, and how many there
+# are. Null until the mission has been read back.
+waypoint = "waypoint"
+waypoint_total = "waypoint_total"
 
 # Status: what the vehicle is doing right now.
 [payloads.status]
@@ -20,16 +24,20 @@ state = "state"
 mode = "mode"
 armed = "armed"
 assigned_target = "target_id"
-payload_state = "payload"
 
-# Scan progress from the Pasifik.
+# Scan progress from the Pasifik: how much of the mission is behind the
+# aircraft, every mission item with a coordinate in flying order, and the
+# sequence number of the one the autopilot is flying to.
 [payloads.scan]
 percent = "percent"
 legs_done = "legs_done"
 legs_total = "legs_total"
-seconds_remaining = "seconds_remaining"
-polygon = "polygon"
-legs = "legs"
+waypoints = "waypoints"
+current_sequence = "current_seq"
+waypoint_sequence = "seq"
+waypoint_latitude = "lat"
+waypoint_longitude = "lon"
+waypoint_altitude = "alt"
 
 # A confirmed target, and the agent it was given to.
 [payloads.target]
@@ -41,6 +49,24 @@ confidence = "confidence"
 priority = "priority"
 state = "state"
 agent_id = "agent_id"
+
+# One tile of the live map. The coordinate is the tile's top left corner, and
+# with the scale and the size that is everything needed to place the picture —
+# the interface never has to know where the mosaic's origin is. The revision
+# goes up each time the ground station writes the tile, which is how a tile
+# already on screen is told from one that has been painted on since. The
+# session names the ground station run that wrote the tile: revisions restart
+# with that program, so when the session changes the tiles on screen are the
+# old run's map and they go.
+[payloads.map_tile]
+tile_id = "tile_id"
+latitude = "lat"
+longitude = "lon"
+metres_per_pixel = "metres_per_pixel"
+size_pixels = "size_px"
+path = "path"
+revision = "revision"
+session = "session"
 
 # Link health: one entry per hop, plus the antenna tracker.
 [payloads.health]
@@ -75,6 +101,9 @@ dispatch = "DISPATCH"
 hold = "HOLD"
 abort = "ABORT"
 resume = "RESUME"
+# RETREAT. Every agent comes back to the launch grid and lands there; the ones
+# already on the ground arm and take off again to do it.
+retreat = "RETREAT"
 # The camera recording. The interface records nothing itself: the ground station
 # passes these on to the Pasifik, which writes its camera to its own card, and
 # the answer comes back on the recording flag in system/health.
@@ -94,3 +123,114 @@ delivering = "delivering"
 delivered = "delivered"
 failed = "failed"
 vetoed = "vetoed"
+
+# The link test, both ways. Must match computer/config/mqtt.yaml. The mesh
+# rows keep the probe's own column names (from, to, heard, lost, loss,
+# rtt_avg, rtt_max, jitter, gap_max, corrupt) and the Rocket and broker
+# entries carry sent, heard, lost, loss, rtt_avg, rtt_max, jitter, gap_max.
+[payloads.link_test]
+duration_s = "duration_s"
+agent_ids = "agent_ids"
+
+[payloads.link_test_result]
+run = "run"
+started = "started"
+duration_s = "duration_s"
+mesh_rows = "mesh"
+rocket = "rocket"
+broker = "broker"
+telemetry_ages = "telemetry"
+vehicle = "vehicle"
+age_s = "age_s"
+stills = "stills"
+still_count = "count"
+still_rate_hz = "rate_hz"
+file = "file"
+
+# One line from the Pasifik's autopilot, with MAVLink's severity number
+# (0 emergency to 7 debug) so the bad ones can be coloured.
+[payloads.statustext]
+severity = "severity"
+text = "text"
+timestamp = "timestamp_utc"
+
+# The answer to an aircraft command or a mission upload.
+[payloads.command_result]
+command = "command"
+accepted = "accepted"
+detail = "detail"
+
+# An aircraft command. The mode is only read with SET_MODE.
+[payloads.pasifik_command]
+command = "command"
+mode = "mode"
+
+# A mission from a Mission Planner export, one entry per line of the file, in
+# the units MAVLink's MISSION_ITEM_INT takes: degrees, metres, and the frame
+# and command numbers as they were written.
+[payloads.mission_upload]
+items = "items"
+sequence = "seq"
+frame = "frame"
+command = "command"
+param1 = "param1"
+param2 = "param2"
+param3 = "param3"
+param4 = "param4"
+latitude = "lat"
+longitude = "lon"
+altitude = "alt"
+autocontinue = "autocontinue"
+
+[payloads.calibration_command]
+calibration = "calibration"
+action = "action"
+
+# Where a calibration is. The step is the sentence the operator reads, the
+# percent fills the bar, the detail is whatever else is worth showing.
+[payloads.calibration_progress]
+calibration = "calibration"
+state = "state"
+step = "step"
+percent = "percent"
+detail = "detail"
+
+# What the interface can ask the Pasifik itself to do. UPLOAD_MISSION is never
+# sent as a command; it is the name the mission upload answers under.
+[codes.pasifik_command]
+arm = "ARM"
+force_arm = "FORCE_ARM"
+force_disarm = "FORCE_DISARM"
+start_mission = "START_MISSION"
+set_mode = "SET_MODE"
+upload_mission = "UPLOAD_MISSION"
+
+# The flight modes SET_MODE may ask for, by ArduPlane's own names.
+[codes.flight_mode]
+manual = "MANUAL"
+auto = "AUTO"
+qstabilize = "QSTABILIZE"
+rtl = "RTL"
+qrtl = "QRTL"
+qland = "QLAND"
+
+# The calibrations the interface can run, what it can do to one, and where one
+# is. WAITING means the autopilot waits for the operator to press NEXT.
+[codes.calibration]
+compass = "COMPASS"
+rc = "RC"
+accel = "ACCEL"
+accel_simple = "ACCEL_SIMPLE"
+motors = "MOTORS"
+
+[codes.calibration_action]
+start = "START"
+next = "NEXT"
+cancel = "CANCEL"
+
+[codes.calibration_state]
+running = "RUNNING"
+waiting = "WAITING"
+done = "DONE"
+failed = "FAILED"
+cancelled = "CANCELLED"

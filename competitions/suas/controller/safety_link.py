@@ -4,8 +4,8 @@ Appendix B requires RTL and termination to be activatable from the ground
 control station, and rule 5.3.5 requires the safety path to run on onsite
 systems with no dependency on anything outside our control. Our mission traffic
 goes MQTT -> Raspberry Pi -> MAVLink, which puts two single points of failure
-between the operator and the aircraft: the companion process, and the 5.8 GHz
-link. Neither may sit in this path, so this talks to the Pixhawk over the
+between the operator and the aircraft: the companion process, and the 2.4 GHz
+Rocket link. Neither may sit in this path, so this talks to the Pixhawk over the
 RFD900x on 900 MHz and nothing else shares it.
 
 The landing is here for the same reason rather than because a rule asks for it.
@@ -19,6 +19,14 @@ power on the Raspberry Pi and terminate the flight from this panel.
 pymavlink is imported defensively, the way the app root imports tomllib. A
 missing serial library is an install problem, and a ground station that refuses
 to open is worse than one that opens and says the safety link is down.
+
+None of this is the mission link. The mission bus reaches the aircraft over the
+Rocket pair through the ground services and carries no safety command; this is a
+second radio on a second band, and the serial port in general.toml is the one
+the RFD900x enumerates as. A laptop with no radio plugged in therefore cannot
+open it, which is a true statement about the safety link and not a fault -- so
+it is said once and the ribbon shows the link down, rather than repeated every
+time the connection is retried.
 """
 
 import logging
@@ -51,16 +59,23 @@ FLIGHT_TERMINATION_ACTIVATE = 1
 HEARTBEAT_READ_TIMEOUT_SECONDS = 1.0
 RECONNECT_DELAY_SECONDS = 2.0
 
+# What an endpoint nobody set is called in the log.
+NO_ENDPOINT_TEXT = "none"
+
 
 class SafetyLink:
     """One MAVLink connection, used only for the commands that must always work."""
 
     def __init__(self) -> None:
         self.connection = None
+        self.endpoint = SAFETY_MAVLINK_ENDPOINT
         self.on_heartbeat = None              # callable(flight_mode)
         self.on_command_acknowledged = None   # callable(command_number)
         self.running = False
         self.reader_thread: threading.Thread | None = None
+        # An endpoint that cannot be opened is reported once, not on every
+        # retry. Reset by a connection that works.
+        self.failure_reported = False
 
     def start(self) -> None:
         if mavutil is None:
@@ -76,22 +91,58 @@ class SafetyLink:
     def stop(self) -> None:
         self.running = False
 
+    def use_endpoint(self, endpoint: str) -> None:
+        """Dial somewhere else from now on, dropping whatever is open.
+
+        The DEV tab's SIMULATION box calls this: there is no RFD900x on the
+        bench, so the competition serial port is not what the link should be
+        holding open there.
+        """
+        if endpoint == self.endpoint:
+            return
+        self.endpoint = endpoint
+        self.failure_reported = False
+        self.close()
+        logger.info(f"Safety link endpoint is now '{endpoint or NO_ENDPOINT_TEXT}'.")
+
+    def close(self) -> None:
+        """Drop the open connection, so the reader opens the endpoint again."""
+        connection = self.connection
+        self.connection = None
+        if connection is not None:
+            connection.close()
+
     def connect(self) -> bool:
+        if not self.endpoint:
+            self.report_failure("Safety link: no endpoint is set, so it is not "
+                                "opened. RTL and TERMINATE are unavailable.")
+            return False
         try:
             self.connection = mavutil.mavlink_connection(
-                SAFETY_MAVLINK_ENDPOINT, baud=SAFETY_MAVLINK_BAUD_RATE
+                self.endpoint, baud=SAFETY_MAVLINK_BAUD_RATE
             )
         except Exception as connection_error:
             # pymavlink raises whatever the underlying transport raises, and a
             # dead serial port must not take the interface down with it.
-            logger.error(f"Safety link could not be opened: {connection_error}")
+            self.report_failure(
+                f"Safety link could not be opened on {self.endpoint}: "
+                f"{connection_error}"
+            )
             self.connection = None
             return False
+        self.failure_reported = False
         logger.info(
-            f"Safety link listening on {SAFETY_MAVLINK_ENDPOINT} "
+            f"Safety link listening on {self.endpoint} "
             f"at {SAFETY_MAVLINK_BAUD_RATE} baud."
         )
         return True
+
+    def report_failure(self, message: str) -> None:
+        """Say why the link is not open, once per outage rather than per retry."""
+        if self.failure_reported:
+            return
+        self.failure_reported = True
+        logger.error(message)
 
     def read_forever(self) -> None:
         """Keep the link alive and report every heartbeat, on its own thread."""

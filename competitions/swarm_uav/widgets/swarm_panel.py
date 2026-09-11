@@ -36,8 +36,11 @@ from competitions.swarm_uav.config import (
     MIN_FORMATION_ANGLE,
     MIN_FORMATION_DISTANCE,
     MIN_TAKEOFF_ALTITUDE,
+    MISSION2_ALL_IN_TEXT,
     MISSION2_START_TEXT,
+    MISSION2_STILL_IN_TEXT,
     MISSION2_STOP_TEXT,
+    MISSION2_WAITING_TEXT,
     MISSION_ACTIVE_STATES,
     MISSION_TARGET_AUTO_TEXT,
     MOVE_AXIS_MAX,
@@ -204,6 +207,24 @@ class SwarmPanel(QWidget):
         else:
             self.mission2btn.setText(MISSION2_START_TEXT)
         self.mission2_requested.emit(active)
+
+    def show_mission2_status(self, active: bool, waiting: list[int]) -> None:
+        """Say on the button which drones still lack the command.
+
+        The ground station keeps sending it to them and reports here every
+        time the list changes, so the button reads "all in" once every drone
+        has answered.
+        """
+        drones = ", ".join(str(drone_id) for drone_id in waiting)
+        if active and waiting:
+            text = f"{MISSION2_STOP_TEXT} ({MISSION2_WAITING_TEXT.format(drones=drones)})"
+        elif active:
+            text = f"{MISSION2_STOP_TEXT} ({MISSION2_ALL_IN_TEXT})"
+        elif waiting:
+            text = f"{MISSION2_START_TEXT} ({MISSION2_STILL_IN_TEXT.format(drones=drones)})"
+        else:
+            text = MISSION2_START_TEXT
+        self.mission2btn.setText(text)
 
     def request_move(self) -> None:
         self.move_requested.emit(self.swarmx.value(), self.swarmy.value(), self.swarmz.value())
@@ -385,8 +406,8 @@ class SwarmPanel(QWidget):
     def update_position(self, drone_id: int, x: float, y: float, z: float, velocity: float) -> None:
         self.telemetry_monitor.update_position(drone_id, x, y, z, velocity)
 
-    def set_connection_age(self, drone_id: int, age_milliseconds: int | None) -> None:
-        self.telemetry_monitor.set_connection_age(drone_id, age_milliseconds)
+    def set_connection_health(self, drone_id: int, health) -> None:
+        self.telemetry_monitor.set_connection_health(drone_id, health)
 
     def set_state(self, drone_id: int, state_text: str) -> None:
         self.telemetry_monitor.set_state(drone_id, state_text)
@@ -401,14 +422,24 @@ class SwarmPanel(QWidget):
         operator from pressing a button that will not do anything. EMERGENCY
         stays live: a kill is a safety action, not mission input.
         """
-        mission_flying = any(
-            state in MISSION_ACTIVE_STATES for state in self.drone_states.values()
-        )
+        mission_flying = self.mission_flying()
         for command_button in self.gated_buttons:
             command_button.setEnabled(not mission_flying)
 
-    def set_clock_status(self, drone_id: int, disciplined: bool, error_ms: float | None) -> None:
-        self.telemetry_monitor.set_clock_status(drone_id, disciplined, error_ms)
+    def mission_flying(self) -> bool:
+        """Whether any drone reports a state that means a mission is running."""
+        return any(
+            state in MISSION_ACTIVE_STATES for state in self.drone_states.values()
+        )
+
+    def set_clock_status(self, drone_id: int, source: str, error_ms: float | None) -> None:
+        self.telemetry_monitor.set_clock_status(drone_id, source, error_ms)
+
+    def clear_display(self) -> None:
+        """Wipe the terminal, the decoded QR and the drone readings."""
+        self.swarmterminal.clear()
+        self.qr_panel.clear_qr()
+        self.telemetry_monitor.clear_readings()
 
     def show_camera_frame(self, drone_id: int, frame: QPixmap) -> None:
         camera_view = self.camera_views.get(drone_id)

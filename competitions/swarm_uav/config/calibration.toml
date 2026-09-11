@@ -1,0 +1,82 @@
+# The CALIBRATION tab: the measurements a drone needs before it flies with the
+# swarm.
+#
+# Every drone measures itself and writes the answer into its own
+# config/measured.yaml, so a mixed fleet ends up with per-airframe numbers
+# instead of one figure copied across all of them. The steps are listed in the
+# order they have to be run: the camera and the two ground measurements first,
+# the flying one last.
+
+[calibration]
+tab_title = "CALIBRATION"
+drones_title = "DRONES"
+drones_hint = "Every ticked drone is measured at the same time. A drone only answers when it is powered, on the mesh and parked between missions - not during one."
+no_drones_text = "Tick at least one drone before starting a measurement."
+steps_title = "MEASUREMENTS"
+results_title = "RESULTS"
+results_columns = ["DRONE", "STATUS", "MEASURED", "NOTE"]
+results_empty_text = "Nothing measured yet."
+# Rows are appended as the drones answer, newest at the top. Old rows are
+# dropped so a long bench session does not grow the table without limit.
+results_max_rows = 60
+results_min_height = 180
+unknown_drone_text = "?"
+
+# What each number in an answer is called on screen. A result carries only the
+# keys its own measurement produced, so this covers all four steps in one list.
+[calibration.measured_labels]
+link_latency_ms = "link {value} ms"
+motor_response_ms = "motor {value} ms"
+probes = "{value} probes"
+dead_time = "dead time {value} s"
+time_constant = "time constant {value} s"
+white_balance_gains = "gains {value}"
+
+# How a reported status is coloured. Anything not named here is treated as a
+# failure, so a status nobody expected still stands out.
+[calibration.status_states]
+ok = "ok"
+applied = "ok"
+partial = "caution"
+busy = "caution"
+rejected = "caution"
+failed = "critical"
+
+[[calibration.step]]
+name = "white_balance"
+title = "1 - CAMERA WHITE BALANCE"
+button = "MEASURE WHITE BALANCE"
+hint = "Drones on the ground, cameras pointing at the field, in the light you will fly in. Each camera fixes its colour balance on what it sees and keeps it across restarts. Run this before measuring any colour band, or every band is built on the wrong hue."
+
+[[calibration.step]]
+name = "link"
+title = "2 - LINK LATENCY"
+button = "MEASURE LINK LATENCY"
+hint = "Drones powered and disarmed. Propellers on or off, it makes no difference - nothing moves and no motor spins. Times how long a command takes to travel from the companion computer to the flight controller."
+
+[[calibration.step]]
+name = "motor"
+title = "3 - MOTOR SPOOL-UP"
+button = "MEASURE MOTOR SPOOL-UP"
+variant = "caution"
+hint = "PROPELLERS OFF. Each drone arms and runs a real takeoff on the ground so its motors spin up, and times how long they take to rise. This is the delay that decides whether a drone leaves the ground with the swarm or behind it. The link latency is measured again in the same run."
+confirm_title = "Are the propellers removed?"
+confirm_question = """This arms every ticked drone and commands a takeoff, so the motors will spin.
+
+Check the airframes before answering - nothing in the software can see a propeller."""
+
+[[calibration.step]]
+name = "tau"
+title = "4 - VELOCITY RESPONSE"
+button = "MEASURE VELOCITY RESPONSE"
+variant = "caution"
+# The floor and the distance mirror tau_identification in the drone repository's
+# config/collision_avoidance.yaml. They are repeated here only so the hint can
+# tell the operator what to expect; change them together.
+hint = "PROPELLERS ON, and every ticked drone already armed and hovering above {min_altitude_m} m over clear ground. Each one darts about {step_distance_m} m north with collision avoidance switched off, then flies back to where it started. They all set off at the same moment, so leave room between them. This is the number that decides how far apart the swarm starts each leg."
+confirm_title = "Fly the velocity step?"
+confirm_question = """Every ticked drone darts about {step_distance_m} m north at the same moment, with collision avoidance switched off, then flies back.
+
+Make sure they are hovering clear of each other and of everything downrange."""
+min_altitude_m = 5.0
+step_distance_m = 9.0

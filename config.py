@@ -75,6 +75,7 @@ class Competition:
     label: str
     uses_drones: bool
     uses_vtols: bool
+    supports_developer_mode: bool
 
 
 COMPETITIONS: list[Competition] = [
@@ -83,6 +84,7 @@ COMPETITIONS: list[Competition] = [
         label=entry["label"],
         uses_drones=entry["uses_drones"],
         uses_vtols=entry["uses_vtols"],
+        supports_developer_mode=entry["supports_developer_mode"],
     )
     for competition_key, entry in config["competitions"].items()
 ]
@@ -97,6 +99,10 @@ SELECTION_VEHICLES_TITLE: str = selection["vehicles_title"]
 SELECTION_DRONE_COUNT_TEXT: str = selection["drone_count_text"]
 SELECTION_VTOL_COUNT_TEXT: str = selection["vtol_count_text"]
 SELECTION_CONTINUE_TEXT: str = selection["continue_text"]
+SELECTION_DEVELOPER_TITLE: str = selection["developer_title"]
+SELECTION_DEVELOPER_MODE_TEXT: str = selection["developer_mode_text"]
+SELECTION_DEVELOPER_HINT: str = selection["developer_hint"]
+DEVELOPER_MODE_DEFAULT: bool = selection["developer_mode_default"]
 
 # Vehicle counts
 
@@ -114,6 +120,9 @@ TERMINAL_TIME_FORMAT: str = config["ui"]["terminal_time_format"]
 TERMINAL_MAX_LINES: int = config["ui"]["terminal_max_lines"]
 POSITION_DECIMALS: int = config["ui"]["position_decimals"]
 CAMERA_UNAVAILABLE_TEXT: str = config["ui"]["camera_unavailable_text"]
+CAMERA_STALE_TEXT: str = config["ui"]["camera_stale_text"]
+CAMERA_STALE_AFTER_MS: int = config["ui"]["camera_stale_after_ms"]
+CAMERA_STALE_CHECK_INTERVAL_MS: int = config["ui"]["camera_stale_check_interval_ms"]
 CAMERA_REMOVE_TEXT: str = config["ui"]["camera_remove_text"]
 CAMERA_ADD_TEXT: str = config["ui"]["camera_add_text"]
 BROKER_CONNECTED_TEXT: str = config["ui"]["broker_connected_text"]

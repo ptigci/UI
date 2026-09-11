@@ -15,11 +15,14 @@ another lap is worth the clock.
 from competitions.suas.config import (
     ENDURANCE_LAP_DIVISOR,
     ENDURANCE_MAXIMUM_POINTS,
+    KEY_FLIGHT_TIME_LEFT_S,
+    KEY_FLIGHT_TIME_S,
     KEY_LAP_INVALID_REASON,
     KEY_LAP_VALID,
     KEY_LAP_WAYPOINT_INDEX,
     KEY_LAPS_COMPLETED,
     KEY_LAPS_LOCKED,
+    KEY_MISSION_DETAIL,
     KEY_MISSION_STATE,
     MAXIMUM_LAPS,
     MODE_AUTONOMOUS,
@@ -36,6 +39,11 @@ class LapState:
         self.lap_invalid_reason: str | None = None
         self.laps_locked = False
         self.mission_phase: str | None = None
+        self.mission_detail: str | None = None
+        # The aircraft's flight clock, once it reports one: seconds flown and
+        # seconds left before the second look at the targets ends.
+        self.flight_time_s: int | None = None
+        self.flight_time_left_s: int | None = None
 
     def update_from(self, payload: dict) -> None:
         if KEY_LAPS_COMPLETED in payload:
@@ -50,6 +58,12 @@ class LapState:
             self.laps_locked = bool(payload[KEY_LAPS_LOCKED])
         if KEY_MISSION_STATE in payload:
             self.mission_phase = text_or_none(payload[KEY_MISSION_STATE])
+        if KEY_MISSION_DETAIL in payload:
+            self.mission_detail = text_or_none(payload[KEY_MISSION_DETAIL])
+        if KEY_FLIGHT_TIME_S in payload:
+            self.flight_time_s = int_or_none(payload[KEY_FLIGHT_TIME_S])
+        if KEY_FLIGHT_TIME_LEFT_S in payload:
+            self.flight_time_left_s = int_or_none(payload[KEY_FLIGHT_TIME_LEFT_S])
 
     def lap_in_progress(self) -> int:
         """The number of the lap being flown, which is the next one to complete."""

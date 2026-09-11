@@ -29,6 +29,8 @@ from competitions.suas.config import (
     DROP_COMMAND_REJECTED_FORMAT,
     DROP_COMMAND_SENT_TEXT,
     DROP_COMMAND_TIMEOUT_TEXT,
+    MISSION_FINISH_ACCEPTED_TEXT,
+    MISSION_START_ACCEPTED_TEXT,
     REFRESH_INTERVAL_MS,
     SAFETY_COMMAND_ACK_TIMEOUT_MS,
     SAFETY_COMMAND_LAND,
@@ -110,11 +112,55 @@ class CommandControlMixin:
 
     # The mission bus: the delivery steps
 
+    # The survey, started and ended by hand
+
+    def start_survey(self) -> None:
+        """The aircraft never reported the survey waypoint; start it anyway."""
+        self.controller.send_start_survey()
+        self.await_mission_command(MISSION_START_ACCEPTED_TEXT)
+
+    def finish_survey(self) -> None:
+        """The aircraft never reported the last waypoint; end the scan anyway."""
+        self.controller.send_finish_survey()
+        self.await_mission_command(MISSION_FINISH_ACCEPTED_TEXT)
+
+    def await_mission_command(self, accepted_text: str) -> None:
+        """Start the clock on a press, and remember what to say when it lands."""
+        self.pending_mission_command_elapsed_ms = 0
+        self.pending_mission_accepted_text = accepted_text
+        self.mission_panel.show_command_sent()
+
+    def handle_mission_command_answer(self, status: str, reason: str) -> None:
+        self.pending_mission_command_elapsed_ms = None
+        if status == ACK_REJECTED:
+            self.mission_panel.show_command_rejected(reason)
+            return
+        self.mission_panel.show_command_accepted(self.pending_mission_accepted_text)
+
+    def refresh_mission_command(self) -> None:
+        """A press the aircraft never answered is said so, not left pending."""
+        if self.pending_mission_command_elapsed_ms is None:
+            return
+        self.pending_mission_command_elapsed_ms += REFRESH_INTERVAL_MS
+        if self.pending_mission_command_elapsed_ms < SAFETY_COMMAND_ACK_TIMEOUT_MS:
+            return
+        self.pending_mission_command_elapsed_ms = None
+        self.mission_panel.show_command_timed_out()
+
     def go_to_drop_zone(self) -> None:
         self.begin_flight_command(self.controller.send_goto_target())
 
-    def release_payload(self) -> None:
-        self.begin_flight_command(self.controller.send_release())
+    def release_payload(self, station: str) -> None:
+        """Open one bay. The button says which, because each bay has a servo."""
+        self.begin_flight_command(self.controller.send_release(station))
+
+    def hold_payload(self, station: str) -> None:
+        """Clamp one bay shut on the payload that has just been loaded into it.
+
+        The aircraft drives no servo when it starts, so this is the only thing
+        that closes a bay before a flight.
+        """
+        self.begin_flight_command(self.controller.send_hold(station))
 
     def begin_flight_command(self, command_id: str) -> None:
         """Start the clock on a press, so an unanswered one does not sit silent.
@@ -125,7 +171,9 @@ class CommandControlMixin:
         they have spent a minute of a 45-minute clock on it.
         """
         self.pending_flight_command_elapsed_ms = 0
-        self.drop_test_panel.show_status(DROP_COMMAND_SENT_TEXT, STATE_CAUTION)
+        if self.drop_test_panel is not None:
+            self.drop_test_panel.show_status(DROP_COMMAND_SENT_TEXT, STATE_CAUTION)
+        self.note_delivery_sent(command_id)
         logger.info(f"Delivery step {command_id} sent to the aircraft.")
 
     def stand_the_delivery_down(self) -> None:
@@ -146,6 +194,7 @@ class CommandControlMixin:
     def handle_flight_command_answer(self, status: str, reason: str) -> None:
         """Say what the aircraft made of the press, refusal included."""
         self.pending_flight_command_elapsed_ms = None
+        self.note_delivery_answer(status, reason)
         if self.drop_test_panel is None:
             return
 
@@ -167,7 +216,22 @@ class CommandControlMixin:
 
         logger.error("The aircraft did not answer the last delivery step.")
         self.pending_flight_command_elapsed_ms = None
+        self.note_delivery_timeout()
+        if self.drop_test_panel is None:
+            return
         self.drop_test_panel.show_status(DROP_COMMAND_TIMEOUT_TEXT, STATE_CRITICAL)
+
+    # The mission bus: the mapping test
+
+    def start_folder_stitch(self, folder_path: str) -> None:
+        """Ask the ground services to stitch the folder the operator picked.
+
+        No timer on this one either: the answer is the stitch state itself,
+        which the panel draws as it arrives -- including "running", which is
+        the acknowledgement.
+        """
+        self.controller.send_stitch_request(folder_path)
+        self.mapping_panel.show_request_sent()
 
     # The mission bus: the camera's own recording
 

@@ -16,10 +16,25 @@ agent_status    = "agent/+/status"
 # Targets the ground station has confirmed, and who is flying to them.
 target_confirmed  = "targets/confirmed"
 target_assignment = "targets/assignment"
+# One message per tile of the live map the ground station has just written. It
+# names a file on this machine rather than carrying the picture — the ground
+# station and this interface are the same laptop.
+map_tile = "map/tile"
 # Link latency/loss per hop and the antenna tracker's pointing state.
 system_health = "system/health"
 # Acknowledgements of HOLD / ABORT / RESUME, one per vehicle.
 command_ack = "system/command_ack"
+# The finished link test from the DEV tab: mesh rows, the Rocket and broker
+# round trips, telemetry ages and the file it went to.
+link_test = "computer/link_test"
+# What the autopilot says in words, passed on by the ground station: a refused
+# arm, a fence breach, every "Mission: ..." line.
+pasifik_statustext = "pasifik/statustext"
+# The answer to one aircraft command or mission upload: taken or refused, and why.
+command_result = "pasifik/command/result"
+# Where a running calibration is, and what the operator should do next.
+calibration_progress = "pasifik/calibration/progress"
+
 
 [mqtt.topics.publish]
 # Operator verdicts on detections. Approving one sends its identification and
@@ -30,5 +45,17 @@ detection_reject  = "ui/detection/reject"
 # Verdicts on targets that are already in the pool.
 target_veto    = "ui/targets/veto"
 target_requeue = "ui/targets/requeue"
+# A victim the operator picked out of the live map himself, for somebody the
+# detector never found. It joins the pool exactly as an approved detection does.
+target_manual  = "ui/targets/manual"
 # Mission-wide commands from the mission bar.
 system_command = "ui/system/command"
+# The DEV tab's LINK TEST: which agents take part and for how long.
+link_test = "ui/link_test"
+# Commands that move the Pasifik itself: arm, a mode, start the mission.
+pasifik_command = "ui/pasifik/command"
+# A mission exported from Mission Planner, item by item, to be uploaded.
+pasifik_mission = "ui/pasifik/mission"
+# Start, step or cancel one calibration on the Pasifik.
+calibration_command = "ui/calibration/command"
+

@@ -7,21 +7,24 @@ in a way the inspector can see at a glance. So the radius here is real geometry
 scaled by the projection, not a fixed pixel ring.
 
 The radius comes from the autopilot over telemetry, not from our config, because
-the value that matters is the one the autopilot is actually using.
+the value that matters is the one the autopilot is actually using. So does the
+waypoint being flown to, which is drawn larger and in its own colour; the ones
+before it are the ones reached.
 """
 
-from PyQt6.QtCore import Qt
+from PyQt6.QtCore import QPointF, Qt
 from PyQt6.QtGui import QColor, QPen
 
 from competitions.suas.config import (
     MAP_COLORS,
     MAP_LABEL_OFFSET,
+    MAP_WAYPOINT_CURRENT_MARKER_RADIUS,
     MAP_WAYPOINT_MARKER_RADIUS,
     MAP_WAYPOINT_RADIUS_WIDTH,
 )
 
 
-def draw_waypoints(painter, projection, waypoints: list, reached_index, radius_metres) -> None:
+def draw_waypoints(painter, projection, waypoints: list, current_index, radius_metres) -> None:
     """Numbered waypoints joined in order, each with its acceptance circle."""
     if not waypoints:
         return
@@ -29,12 +32,16 @@ def draw_waypoints(painter, projection, waypoints: list, reached_index, radius_m
     draw_legs(painter, projection, waypoints)
     for position, (latitude, longitude) in enumerate(waypoints, start=1):
         point = projection.to_point(latitude, longitude)
-        if reached_index is not None and position <= reached_index:
+        marker_radius = MAP_WAYPOINT_MARKER_RADIUS
+        if current_index is not None and position < current_index:
             colour = QColor(MAP_COLORS["waypoint_reached"])
+        elif position == current_index:
+            colour = QColor(MAP_COLORS["waypoint_current"])
+            marker_radius = MAP_WAYPOINT_CURRENT_MARKER_RADIUS
         else:
             colour = QColor(MAP_COLORS["waypoint"])
         draw_acceptance_circle(painter, projection, point, radius_metres)
-        draw_marker(painter, point, colour, position)
+        draw_marker(painter, point, colour, marker_radius, position)
 
 
 def draw_legs(painter, projection, waypoints: list) -> None:
@@ -58,10 +65,10 @@ def draw_acceptance_circle(painter, projection, point, radius_metres) -> None:
     painter.drawEllipse(point, radius_pixels, radius_pixels)
 
 
-def draw_marker(painter, point, colour, position: int) -> None:
+def draw_marker(painter, point, colour, marker_radius: int, position: int) -> None:
     painter.setPen(QPen(colour, MAP_WAYPOINT_RADIUS_WIDTH))
     painter.setBrush(colour)
-    painter.drawEllipse(point, MAP_WAYPOINT_MARKER_RADIUS, MAP_WAYPOINT_MARKER_RADIUS)
+    painter.drawEllipse(point, marker_radius, marker_radius)
 
     painter.setPen(QPen(QColor(MAP_COLORS["label"])))
-    painter.drawText(point.x() + MAP_LABEL_OFFSET, point.y(), str(position))
+    painter.drawText(QPointF(point.x() + MAP_LABEL_OFFSET, point.y()), str(position))

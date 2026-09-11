@@ -23,9 +23,10 @@ from competitions.international_uav.config import (
     KEY_LATITUDE,
     KEY_LONGITUDE,
     KEY_MODE,
-    KEY_PAYLOAD_STATE,
     KEY_RTK_STATUS,
     KEY_STATE,
+    KEY_WAYPOINT,
+    KEY_WAYPOINT_TOTAL,
     MAP_TRACK_LENGTH,
     VEHICLE_STALE_AFTER_MS,
 )
@@ -47,12 +48,15 @@ class VehicleState:
     battery_voltage: float | None = None
     gps_fix: str | None = None
     rtk_status: str | None = None
+    # The mission item the autopilot is flying to, and how many there are.
+    # Only the Pasifik reports these, and only once its mission is read back.
+    waypoint: int | None = None
+    waypoint_total: int | None = None
 
     state: str | None = None
     mode: str | None = None
     armed: bool | None = None
     assigned_target: str | None = None
-    payload_state: str | None = None
 
     last_message_monotonic: float | None = None
     track: deque = field(default_factory=lambda: deque(maxlen=MAP_TRACK_LENGTH))
@@ -72,6 +76,8 @@ class VehicleState:
         self.battery_voltage = number_from(payload, KEY_BATTERY_VOLTAGE, self.battery_voltage)
         self.gps_fix = text_from(payload, KEY_GPS_FIX, self.gps_fix)
         self.rtk_status = text_from(payload, KEY_RTK_STATUS, self.rtk_status)
+        self.waypoint = integer_from(payload, KEY_WAYPOINT, self.waypoint)
+        self.waypoint_total = integer_from(payload, KEY_WAYPOINT_TOTAL, self.waypoint_total)
         self.mark_seen()
 
         if self.has_position():
@@ -82,7 +88,6 @@ class VehicleState:
         self.state = text_from(payload, KEY_STATE, self.state)
         self.mode = text_from(payload, KEY_MODE, self.mode)
         self.assigned_target = text_from(payload, KEY_ASSIGNED_TARGET, self.assigned_target)
-        self.payload_state = text_from(payload, KEY_PAYLOAD_STATE, self.payload_state)
         if KEY_ARMED in payload:
             self.armed = bool(payload[KEY_ARMED])
         self.mark_seen()
@@ -116,6 +121,23 @@ def number_from(payload: dict, key: str, previous: float | None) -> float | None
         return previous
     try:
         return float(payload[key])
+    except (TypeError, ValueError):
+        return previous
+
+
+def integer_from(payload: dict, key: str, previous: int | None) -> int | None:
+    """Like number_from, except that a null in the message means the value is gone.
+
+    The aircraft sends null for its waypoint until a mission is read back, and
+    the card must show that as missing rather than keep an old number.
+    """
+    if key not in payload:
+        return previous
+    value = payload[key]
+    if value is None:
+        return None
+    try:
+        return int(value)
     except (TypeError, ValueError):
         return previous
 

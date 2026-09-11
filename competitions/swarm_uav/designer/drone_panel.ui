@@ -244,18 +244,25 @@
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="taubtn">
+      <widget class="QPushButton" name="colorcalbtn">
        <property name="text">
-        <string>CALIBRATE TAU</string>
+        <string>CALIBRATE COLOR</string>
        </property>
       </widget>
      </item>
      <item>
-      <widget class="QPushButton" name="latencybtn">
-       <property name="text">
-        <string>CALIBRATE LATENCY</string>
-       </property>
-      </widget>
+      <layout class="QHBoxLayout" name="qrlocationlayout" stretch="5,0">
+       <item>
+        <widget class="QPushButton" name="qrlocbtn">
+         <property name="text">
+          <string>GET QR LOCATION</string>
+         </property>
+        </widget>
+       </item>
+       <item>
+        <widget class="QComboBox" name="qrnumberbox"/>
+       </item>
+      </layout>
      </item>
      <item>
       <widget class="QPushButton" name="emergencybtn">

@@ -1,6 +1,24 @@
 # Everything drawn on the map: colours, sizes and the scale bar. The map has
-# no online tiles — a mission cannot depend on the internet — so the stitched
-# mosaic from the ground station is the only image layer.
+# no online tiles — a mission cannot depend on the internet — so the mosaic the
+# ground station builds from the Pasifik's scan is the only image layer.
+
+[map.mosaic]
+# How many tiles are held decoded in memory, so a run of bad tiles cannot grow
+# the interface without limit. A tile let go past the cap is gone for good —
+# nothing reads it back when the operator pans — so this matches the ground
+# station's own tile cap and a whole scan stays on screen. That many decoded
+# tiles is about 300 MB.
+max_tiles = 1200
+
+# The spot the operator right-clicked, drawn from the confirmation until the
+# ground station answers with the target it became.
+[map.mark]
+# How far from the mark a target counts as that answer. The ground station puts
+# a marked target on the coordinate it was sent, so this only has to cover the
+# round trip's rounding — and it stays well under the pool's merge radius, so a
+# mark is answered by its own target and never by the neighbour it was placed
+# beside.
+match_radius_metres = 2.0
 
 # The map paints itself, so a stylesheet cannot reach it. These mirror the
 # design tokens in UI/config/theme.toml — the accent for our own aircraft, the
@@ -8,8 +26,11 @@
 [map.colors]
 background = "#080808"
 grid = "#202020"
-scan_polygon = "#F97B08"
-scan_leg = "#4C2C0F"
+# The mission the Pasifik flies: the joined waypoints, the one it is flying
+# to, and the leg from the aircraft to that one.
+waypoint = "#7A4A1E"
+waypoint_current = "#FBB21C"
+next_leg = "#FBB21C"
 track = "#2A4F73"
 pasifik = "#F97B08"
 agent = "#2FD07B"
@@ -17,6 +38,14 @@ vehicle_stale = "#999998"
 assignment_line = "#FBB21C"
 label = "#E0E0E0"
 scale_bar = "#999998"
+# The flight readout box in the map's corner. The background carries an alpha
+# so the mosaic stays visible through it.
+readout_background = "#B0101010"
+readout_border = "#404040"
+readout_text = "#E0E0E0"
+# The operator's own mark, waiting for the ground station. White because it
+# belongs to no target state — it is not a target yet.
+pending_mark = "#FFFFFF"
 
 # One colour per target state, so the map answers "what is happening to that
 # person" without reading anything. Keys are the state codes in payloads.toml.
@@ -31,12 +60,21 @@ vetoed = "#4F4D4B"
 
 [map.sizes]
 vehicle_marker_radius = 9
-vehicle_heading_length = 18
+# The heading arrow: how far its tip reaches from the marker's centre, and how
+# wide its base is where it sits on the marker.
+heading_arrow_length = 20
+heading_arrow_width = 12
+# Waypoint dots, the one being flown to, and the number beside each.
+waypoint_radius = 4
+waypoint_current_radius = 7
+waypoint_label_offset = 6
 target_marker_radius = 7
 selected_target_ring = 13
+pending_mark_radius = 10
+pending_mark_width = 2
 track_width = 2
-polygon_width = 2
 leg_width = 1
+next_leg_width = 2
 assignment_width = 1
 label_offset = 12
 # Padding kept around the fitted content, as a fraction of the shorter side.
@@ -48,3 +86,17 @@ zoom_max = 40.0
 # Spacing of the reference grid in metres, and the scale bar's target width.
 grid_spacing_metres = 50.0
 scale_bar_width_pixels = 120
+
+# The Pasifik's flight numbers, drawn in a corner of the map so the operator
+# reads them without leaving the picture. Each line takes a value already
+# written with number_format, or the missing-value dash from interface.toml.
+[map.readout]
+corner = "top_right"
+margin = 16
+padding = 8
+line_spacing = 4
+number_format = "{value:.1f}"
+ground_speed_format = "GS  {value} m/s"
+airspeed_format = "AS  {value} m/s"
+altitude_format = "ALT {value} m"
+waypoint_format = "WP  {current} / {total}"

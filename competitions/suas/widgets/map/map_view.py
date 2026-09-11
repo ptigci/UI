@@ -25,7 +25,10 @@ from competitions.suas.config import (
 )
 from competitions.suas.widgets.map.aircraft_layer import draw_aircraft
 from competitions.suas.widgets.map.boundary_layer import draw_boundaries
+from competitions.suas.widgets.map.flight_readout import draw_flight_readout
 from competitions.suas.widgets.map.map_projection import MapProjection
+from competitions.suas.widgets.map.route_layer import draw_route
+from competitions.suas.widgets.map.target_layer import draw_targets
 from competitions.suas.widgets.map.tile_layer import TileLayer, draw_tiles
 from competitions.suas.widgets.map.waypoint_layer import draw_waypoints
 from theme import set_surface
@@ -56,8 +59,13 @@ class MapView(QWidget):
 
         self.vehicle = None
         self.waypoints: list = []
-        self.reached_waypoint_index: int | None = None
+        # The mission item the autopilot is flying to, and how many there are.
+        self.current_waypoint_index: int | None = None
+        self.waypoint_total: int | None = None
         self.acceptance_radius_metres: float | None = None
+        self.route = None
+        self.tracks: list = []
+        self.zones: list = []
 
         self.following_aircraft = True
         self.fitted_once = False
@@ -76,9 +84,30 @@ class MapView(QWidget):
         self.waypoints = waypoints
         self.update()
 
-    def show_waypoint_progress(self, reached_index, acceptance_radius_metres) -> None:
-        self.reached_waypoint_index = reached_index
+    def show_waypoint_progress(self, current_index, total, acceptance_radius_metres) -> None:
+        self.current_waypoint_index = current_index
+        self.waypoint_total = total
         self.acceptance_radius_metres = acceptance_radius_metres
+        self.update()
+
+    def current_waypoint(self):
+        """The place the aircraft is flying to, if the lap has such an item."""
+        if self.current_waypoint_index is None:
+            return None
+        position = self.current_waypoint_index - 1
+        if position < 0 or position >= len(self.waypoints):
+            return None
+        return self.waypoints[position]
+
+    def show_route(self, route) -> None:
+        """The route the aircraft announced it is about to fly."""
+        self.route = route
+        self.update()
+
+    def show_targets(self, tracks: list, zones: list) -> None:
+        """Every target the aircraft believes in, and the ground it may not use."""
+        self.tracks = tracks
+        self.zones = zones
         self.update()
 
     def set_following(self, following: bool) -> None:
@@ -116,11 +145,17 @@ class MapView(QWidget):
             painter,
             self.projection,
             self.waypoints,
-            self.reached_waypoint_index,
+            self.current_waypoint_index,
             self.acceptance_radius_metres,
         )
+        draw_targets(painter, self.projection, self.tracks, self.zones)
+        draw_route(painter, self.projection, self.route)
         if self.vehicle is not None:
-            draw_aircraft(painter, self.projection, self.vehicle)
+            draw_aircraft(painter, self.projection, self.vehicle, self.current_waypoint())
+        draw_flight_readout(
+            painter, self.projection, self.vehicle,
+            self.current_waypoint_index, self.waypoint_total,
+        )
 
         if tiles_drawn == 0:
             self.draw_tile_warning(painter)

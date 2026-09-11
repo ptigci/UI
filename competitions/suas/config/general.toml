@@ -35,6 +35,29 @@ camera_panel_enabled = true
 # looks live is the worst thing this panel could show.
 camera_stale_seconds = 2.0
 
+# How long after the aircraft's last message the ribbon calls the mission link
+# down. The aircraft sends telemetry twice a second, so three seconds of
+# silence means the Rocket link, the ground services or the aircraft is gone.
+# The broker being connected proves nothing about the aircraft.
+mission_link_stale_ms = 3000
+
+# The mapping test panel: point the ground services at a folder of recorded
+# frames — each named with the position and attitude it was taken at — and see
+# the mosaic they stitch from it. A bench tool like the delivery panel: it
+# proves the mapping pipeline on real frames without flying, and comes off the
+# screen for a scored mission. The folder path travels to the ground services
+# and is read on THEIR machine, which on the bench is usually this one.
+mapping_panel_enabled = true
+
+# The bench half of the mapping panel: a folder picker and BUILD MAP, for
+# stitching recorded frames without flying. Off for a scored mission -- it
+# opens a file dialog over the map.
+mapping_bench_enabled = false
+
+# Whether the ground services run on this laptop, so OPEN FOLDER can open the
+# folder the map was written to. False when they run on another machine.
+mapping_results_folder_is_local = true
+
 [map]
 # The only source of map imagery. No network path exists in the map widget.
 # Build this before travelling and verify it with networking disabled.
@@ -58,8 +81,20 @@ tile_file = "assets/tiles/skyway_range.mbtiles"
 # forbid. Fine for a bench day, not for the flight line.
 #
 # The link being down is why the ribbon says so: nothing is listening on this
-# endpoint.
+# endpoint. Leave it empty and the link is not opened at all, which is the
+# honest setting for a laptop with no radio plugged into it -- the ribbon still
+# says the link is down, and the log says it once instead of every two seconds.
 mavlink_endpoint = "COM7"
+
+# What the link dials instead while SIMULATION is ticked on the DEV tab. There
+# is no RFD900x on the bench, so the choice is a SITL port or nothing.
+#
+# Empty is the default and it means nothing: SITL serves MAVLink on one port
+# per serial, one client each, and the two it has are spoken for -- the
+# aircraft application has one and TEST MISSION borrows the other. Give SITL a
+# third serial port if you want RTL and TERMINATE to work in simulation, and
+# put it here.
+simulation_mavlink_endpoint = ""
 
 # Ignored for a network endpoint.
 mavlink_baud_rate = 57600

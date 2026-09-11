@@ -8,8 +8,10 @@ import base64
 import binascii
 import logging
 import time
+from collections import deque
 
 from competitions.swarm_uav.config import (
+    CLOCK_SOURCE_PPS,
     MISSION_TARGET_AUTO_TEXT,
     PLAN_KEY_PLAN,
     PLAN_KEY_STEPS,
@@ -22,6 +24,7 @@ from competitions.swarm_uav.config import (
     PLAN_STATUS_STARTED,
     PLAN_TEXT,
     TOPIC_ARM,
+    TOPIC_CALIBRATE_COLOR,
     TOPIC_CALIBRATE_LATENCY,
     TOPIC_CALIBRATE_TAU,
     TOPIC_CAMERA_PATTERN,
@@ -30,7 +33,13 @@ from competitions.swarm_uav.config import (
     TOPIC_DISARM,
     TOPIC_DRONE_NUMBER,
     TOPIC_EMERGENCY,
+    LINK_HEALTH_WINDOW_S,
+    LINK_TEST_DURATION_S,
+    LINK_TELEMETRY_RATE_HZ,
     TOPIC_ESP_LOG,
+    TOPIC_LINK_TEST,
+    TOPIC_LINK_TEST_RESULT,
+    TOPIC_MESH_CHANNEL,
     TOPIC_FORCE_ARM,
     TOPIC_FORCE_DISARM,
     TOPIC_FORMATION,
@@ -39,6 +48,7 @@ from competitions.swarm_uav.config import (
     TOPIC_LAND,
     TOPIC_MISSION1,
     TOPIC_MISSION2,
+    TOPIC_MISSION2_STATUS,
     TOPIC_MISSION_PLAN,
     TOPIC_MISSION_PLAN_RUN,
     TOPIC_MOVE,
@@ -47,13 +57,16 @@ from competitions.swarm_uav.config import (
     TOPIC_OBJECT_DETECTION_FRAMES,
     TOPIC_PLAN_STATUS_PATTERN,
     TOPIC_QR_CONTENT,
+    TOPIC_QR_LOCATION,
     TOPIC_SIMULATION,
     TOPIC_STATE_PATTERN,
     TOPIC_TAKEOFF,
     TOPIC_TELEMETRY_PATTERN,
+    TOPIC_WHITE_BALANCE,
 )
 from mqtt.mqtt_client import MqttClient
 from widgets.detection_review import Detection
+from competitions.swarm_uav.controller.hsv_band import band_text
 from competitions.swarm_uav.controller.mission_plan import wire_steps
 
 logger = logging.getLogger(__name__)
@@ -87,8 +100,13 @@ class DroneController:
         }
         self.states: dict[int, str] = {}
         self.last_message_monotonic: dict[int, float] = {}
+        self.first_message_monotonic: dict[int, float] = {}
+        # When each drone's position messages arrived, inside the health window.
+        self.telemetry_arrivals: dict[int, deque] = {}
         self.camera_stream_active: dict[int, bool] = {}
-        self.clock_disciplined: dict[int, bool] = {}
+        # What is steering each drone clock, as last reported. A drone not
+        # in here has said nothing about its clock yet.
+        self.clock_sources: dict[int, str] = {}
 
         # The uploaded mission plan, kept so the drones' progress reports can
         # be shown as the step descriptions the operator typed.
@@ -105,6 +123,8 @@ class DroneController:
         self.on_color_zone = None       # callable(payload)
         self.on_detection_frame = None  # callable(image_bytes, payload)
         self.on_esp_message = None      # callable(payload)
+        self.on_link_test = None        # callable(payload)
+        self.on_mission2_status = None  # callable(payload)
 
         self.mqtt_client = MqttClient()
         self.mqtt_client.on_message_callback = self.route_incoming_message
@@ -118,8 +138,11 @@ class DroneController:
         self.mqtt_client.subscribe(TOPIC_COLOR_ZONE)
         self.mqtt_client.subscribe(TOPIC_OBJECT_DETECTION_FRAMES)
         self.mqtt_client.subscribe(TOPIC_ESP_LOG)
+        self.mqtt_client.subscribe(TOPIC_LINK_TEST_RESULT)
 
-        self.publish_vehicle_count()
+        # The count alone sets the ground station up; only the refresh button
+        # sends it on to the drones, so starting the UI never resets a swarm.
+        self.publish_vehicle_count(refresh=False)
 
     def vehicle_name(self, vehicle_id: int) -> str:
         if vehicle_id in self.vtol_ids:
@@ -132,21 +155,63 @@ class DroneController:
             return None
         return int((time.monotonic() - last_seen) * 1000)
 
+    def note_telemetry_arrival(self, vehicle_id: int) -> None:
+        """Only the position stream counts as the link being alive: a camera
+        stream over WiFi kept the label green while the mesh was dead."""
+        now = time.monotonic()
+        self.last_message_monotonic[vehicle_id] = now
+        self.first_message_monotonic.setdefault(vehicle_id, now)
+        arrivals = self.telemetry_arrivals.setdefault(vehicle_id, deque())
+        arrivals.append(now)
+        while arrivals and now - arrivals[0] > LINK_HEALTH_WINDOW_S:
+            arrivals.popleft()
+
+    def link_health(self, vehicle_id: int) -> tuple[int, float, float] | None:
+        """(age ms, received Hz, loss %) over the window, None before the first message."""
+        age_milliseconds = self.milliseconds_since_last_message(vehicle_id)
+        if age_milliseconds is None:
+            return None
+        now = time.monotonic()
+        arrivals = self.telemetry_arrivals.get(vehicle_id, deque())
+        while arrivals and now - arrivals[0] > LINK_HEALTH_WINDOW_S:
+            arrivals.popleft()
+        # A stream younger than the window is judged over its own length,
+        # else the first message reads as 96 % loss that counts down for 5 s.
+        stream_age_s = now - self.first_message_monotonic[vehicle_id]
+        window_s = max(min(LINK_HEALTH_WINDOW_S, stream_age_s), 1.0 / LINK_TELEMETRY_RATE_HZ)
+        rate_hz = len(arrivals) / window_s
+        expected = LINK_TELEMETRY_RATE_HZ * window_s
+        loss_percent = max(0.0, 100.0 * (1.0 - len(arrivals) / expected))
+        return age_milliseconds, rate_hz, loss_percent
+
+    def clear_cached_readings(self) -> None:
+        """Forget the positions behind a refreshed screen, so nothing older
+        than the refresh is drawn again. The message times stay: a refresh
+        says nothing about the link, and clearing them showed every drone as
+        "no data" on a link that never dropped."""
+        for position in self.positions.values():
+            position.update(dict.fromkeys(POSITION_AXES, 0.0))
+
     def set_vehicle_ids(self, drone_ids: list[int], vtol_ids: list[int]) -> str:
         """Apply a new vehicle layout (refresh) and announce the new count."""
         self.drone_ids = list(drone_ids)
         self.vtol_ids = list(vtol_ids)
         for vehicle_id in self.drone_ids + self.vtol_ids:
             self.positions.setdefault(vehicle_id, dict.fromkeys(POSITION_AXES, 0.0))
-        return self.publish_vehicle_count()
+        return self.publish_vehicle_count(refresh=True)
 
     # Commands
 
-    def publish_vehicle_count(self) -> str:
+    def publish_vehicle_count(self, refresh: bool) -> str:
+        """Announce the vehicle count; with refresh the drones reset for a new mission."""
         # the mesh swarm counts drones; VTOL-only modes announce their VTOLs
         vehicle_count = len(self.drone_ids) or len(self.vtol_ids)
-        self.mqtt_client.publish_json(TOPIC_DRONE_NUMBER, {"drone_number": vehicle_count})
-        return f"Drone count published: {vehicle_count}"
+        self.mqtt_client.publish_json(
+            TOPIC_DRONE_NUMBER, {"drone_number": vehicle_count, "refresh": refresh}
+        )
+        if refresh:
+            return f"Refresh sent to {vehicle_count} drones; each answers when it is reset."
+        return f"Drone count set to {vehicle_count}"
 
     def set_simulation(self, simulation_enabled: bool) -> str:
         self.mqtt_client.publish_json(
@@ -194,6 +259,34 @@ class DroneController:
         )
         return f"Move command sent to {target_names}. x={x_offset}, y={y_offset}, z={z_offset}"
 
+    def link_test(self, vehicle_ids: list, swarm_only: bool, channel) -> str:
+        target_ids, target_names = self.resolve_targets(vehicle_ids)
+        self.mqtt_client.publish_json(
+            TOPIC_LINK_TEST,
+            {
+                "duration_s": LINK_TEST_DURATION_S, "drone_ids": target_ids,
+                "swarm_only": swarm_only, "channel": channel,
+            },
+        )
+        where = ""
+        if channel is not None:
+            where = f" on channel {channel}"
+        if not target_ids:
+            return f"Link test started with no drone ticked: only the air{where} is checked."
+        if swarm_only:
+            return (
+                f"Link test started, swarm only: {target_names} and the ground station "
+                f"probe the mesh{where} for {LINK_TEST_DURATION_S:.0f} s with the bridges left alone."
+            )
+        return (
+            f"Link test started: {target_names} and the ground station probe the mesh{where} "
+            f"for {LINK_TEST_DURATION_S:.0f} s while their bridges listen to the air."
+        )
+
+    def set_mesh_channel(self, channel: int) -> str:
+        self.mqtt_client.publish_json(TOPIC_MESH_CHANNEL, {"channel": channel})
+        return f"Mesh channel change to {channel} sent; every node moves and saves it."
+
     def free(self, vehicle_ids) -> str:
         target_ids, target_names = self.resolve_targets(vehicle_ids)
         self.mqtt_client.publish_json(TOPIC_FREE, {"drone_ids": target_ids})
@@ -208,6 +301,27 @@ class DroneController:
             f"Tau calibration sent to {target_names} — the drone darts a few "
             f"metres north and returns; result appears in the mesh log."
         )
+
+    def measure_white_balance(self, vehicle_ids) -> str:
+        # the camera fixes its balance on the ground it is looking at and keeps
+        # it across restarts; the colour bands are measured through whatever
+        # balance is in force, so this goes first
+        target_ids, target_names = self.resolve_targets(vehicle_ids)
+        self.mqtt_client.publish_json(TOPIC_WHITE_BALANCE, {"drone_ids": target_ids})
+        return (
+            f"White balance measurement sent to {target_names} — it takes a "
+            f"couple of seconds; calibrate the colours once it answers."
+        )
+
+    def calibrate_color(self, vehicle_ids, color_name: str, bands: list) -> str:
+        # measured on that drone's own camera view, so it is sent to that drone
+        # alone; it applies at once and the drone keeps it across restarts
+        target_ids, target_names = self.resolve_targets(vehicle_ids)
+        self.mqtt_client.publish_json(
+            TOPIC_CALIBRATE_COLOR,
+            {"drone_ids": target_ids, "color": color_name, "bands": bands},
+        )
+        return f"{color_name} HSV band sent to {target_names}: {band_text(bands)}"
 
     def calibrate_latency(self, vehicle_ids, props_removed: bool) -> str:
         # the drone answers on its feedback topic with the measured link
@@ -225,6 +339,18 @@ class DroneController:
         return (
             f"Link latency only sent to {target_names} — propellers not "
             f"confirmed off, so the motors stay still."
+        )
+
+    def save_qr_position(self, vehicle_id: int, qr_number: int) -> str:
+        # the ground station takes the position out of the drone's own
+        # telemetry and writes it into the drone config, so the mission flies
+        # to the placard as it was measured on the field
+        self.mqtt_client.publish_json(
+            TOPIC_QR_LOCATION, {"drone_id": vehicle_id, "qr": qr_number}
+        )
+        return (
+            f"QR {qr_number} location taken from {self.vehicle_name(vehicle_id)} — "
+            f"the ground station writes it into the drone config."
         )
 
     def formation(
@@ -345,6 +471,14 @@ class DroneController:
             if self.on_esp_message:
                 self.on_esp_message(payload)
             return
+        if topic == TOPIC_LINK_TEST_RESULT:
+            if self.on_link_test:
+                self.on_link_test(payload)
+            return
+        if topic == TOPIC_MISSION2_STATUS:
+            if self.on_mission2_status:
+                self.on_mission2_status(payload)
+            return
         if topic == TOPIC_QR_CONTENT:
             self.handle_qr_content(payload)
             return
@@ -362,10 +496,9 @@ class DroneController:
             logger.warning(f"Cannot parse a vehicle id from topic: {topic}")
             return
 
-        self.last_message_monotonic[vehicle_id] = time.monotonic()
-
         message_type = topic_parts[2]
         if message_type == TELEMETRY_MESSAGE_TYPE:
+            self.note_telemetry_arrival(vehicle_id)
             self.handle_telemetry(vehicle_id, payload)
         elif message_type == CAMERA_MESSAGE_TYPE:
             self.handle_camera(vehicle_id, payload)
@@ -384,7 +517,9 @@ class DroneController:
     def handle_telemetry(self, vehicle_id: int, payload: dict) -> None:
         position = self.positions.setdefault(vehicle_id, dict.fromkeys(POSITION_AXES, 0.0))
         for axis in POSITION_AXES:
-            if axis in payload:
+            # A drone sends null metres until the swarm origin is known; the
+            # last value stands until it can place itself.
+            if payload.get(axis) is not None:
                 try:
                     position[axis] = float(payload[axis])
                 except (TypeError, ValueError):
@@ -430,8 +565,10 @@ class DroneController:
         if not isinstance(state_text, str):
             logger.warning(f"{self.vehicle_name(vehicle_id)} sent a state without text.")
             return
+        # the drone repeats its state every couple of seconds; log the changes
+        if self.states.get(vehicle_id) != state_text:
+            logger.info(f"{self.vehicle_name(vehicle_id)} | state | {state_text}")
         self.states[vehicle_id] = state_text
-        logger.info(f"{self.vehicle_name(vehicle_id)} | state | {state_text}")
         if self.on_state:
             self.on_state(vehicle_id, state_text)
 
@@ -479,23 +616,32 @@ class DroneController:
         )
 
     def handle_clock(self, vehicle_id: int, payload: dict) -> None:
-        disciplined = payload.get("disciplined")
-        if not isinstance(disciplined, bool):
+        source = payload.get("source")
+        if not isinstance(source, str):
             logger.warning(
                 f"{self.vehicle_name(vehicle_id)} sent a clock report without a "
-                f"disciplined flag."
+                f"source."
             )
             return
         # the report repeats every few seconds; log only the transitions
-        if self.clock_disciplined.get(vehicle_id) != disciplined:
-            self.clock_disciplined[vehicle_id] = disciplined
-            if disciplined:
-                sync_text = "in sync"
-            else:
-                sync_text = "NOT in sync"
-            logger.info(f"{self.vehicle_name(vehicle_id)} | pps clock | {sync_text}")
+        if self.clock_sources.get(vehicle_id) != source:
+            self.clock_sources[vehicle_id] = source
+            logger.info(f"{self.vehicle_name(vehicle_id)} | clock | steered by {source}")
         if self.on_clock:
             self.on_clock(vehicle_id, payload)
+
+    def drones_without_pps(self) -> list[int]:
+        """The drones that have not reported a pulse of their own.
+
+        A drone following a sibling is one of them: its clock is good
+        enough to fly barriers on, and the operator still has to know its
+        GPS is down before the swarm leaves the ground. A drone that has
+        said nothing about its clock counts too — silence is not a lock.
+        """
+        return [
+            drone_id for drone_id in self.drone_ids
+            if self.clock_sources.get(drone_id) != CLOCK_SOURCE_PPS
+        ]
 
     def handle_qr_content(self, payload) -> None:
         if not isinstance(payload, dict):

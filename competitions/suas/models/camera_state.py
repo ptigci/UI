@@ -3,8 +3,8 @@
 Two facts that look like one on the screen and are not. The picture comes from
 the ground services several times a second; the recording state comes from the
 aircraft and changes only when somebody presses something. Either can be true
-while the other is not — a camera recording perfectly to its own card while the
-2.4 GHz link is down shows no picture at all, and that is not a fault.
+while the other is not — an aircraft recording perfectly onto its own card while
+the 2.4 GHz link is down shows no picture at all, and that is not a fault.
 
 Neither is inferred from a button. `recording` is what the aircraft last said,
 and it stays unknown until it says something, because the command is a toggle:

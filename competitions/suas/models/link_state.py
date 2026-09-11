@@ -2,8 +2,8 @@
 
 They are different bands doing different jobs and they do not fail together —
 which is the whole point of having both. The 900 MHz RFD900x carries the safety
-MAVLink path that Appendix B requires the ground station to have; the 5.8 GHz
-link carries the mission bus. When one dies the operator has to know which, so
+MAVLink path that Appendix B requires the ground station to have; the 2.4 GHz
+Rocket link carries the mission bus. When one dies the operator has to know which, so
 they never share an indicator.
 
 The safety link's state comes from our own MAVLink connection rather than from a
@@ -15,6 +15,7 @@ import time
 
 from competitions.suas.config import (
     KEY_MISSION_LINK_LOSS,
+    MISSION_LINK_STALE_MS,
     SAFETY_HEARTBEAT_TIMEOUT_MS,
 )
 
@@ -61,6 +62,10 @@ class LinkPair:
 
     def safety_is_up(self) -> bool:
         return self.safety.is_up(SAFETY_HEARTBEAT_TIMEOUT_MS)
+
+    def mission_is_up(self) -> bool:
+        """Whether the aircraft has been heard from recently enough to call the link up."""
+        return self.mission.is_up(MISSION_LINK_STALE_MS)
 
 
 def float_or_none(value) -> float | None:

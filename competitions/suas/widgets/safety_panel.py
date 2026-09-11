@@ -8,6 +8,8 @@ link's health separately so nobody has to guess whether a press could even land.
 
 The acknowledgement comes back from the autopilot, not from the click. A button
 that turns green because it was pressed is a lie at the worst possible moment.
+That, and the gap TERMINATE sits in, are what make one press safe enough --
+neither of these is held down.
 """
 
 from PyQt6.QtCore import pyqtSignal
@@ -15,7 +17,6 @@ from PyQt6.QtWidgets import QLabel
 
 from competitions.suas.config import (
     SAFETY_ACKNOWLEDGED_TEXT,
-    SAFETY_HOLD_HINT_TEXT,
     SAFETY_LINK_DOWN_TEXT,
     SAFETY_PANEL_TITLE,
     SAFETY_RETURN_TEXT,
@@ -23,10 +24,9 @@ from competitions.suas.config import (
     SAFETY_TERMINATE_TEXT,
     SAFETY_TIMEOUT_TEXT,
 )
-from competitions.suas.widgets.hold_button import HoldButton
-from theme import set_role, set_state
+from competitions.suas.widgets.command_button import command_button
+from theme import set_state
 from theme.tokens import (
-    ROLE_HINT,
     SPACE_XL,
     STATE_CAUTION,
     STATE_CRITICAL,
@@ -52,13 +52,10 @@ class SafetyPanel(Card):
         self.link_dot = StatusDot(STATE_CRITICAL, self)
         self.add_header_widget(self.link_dot)
 
-        self.return_button = HoldButton(SAFETY_RETURN_TEXT, VARIANT_CAUTION, self)
-        self.terminate_button = HoldButton(SAFETY_TERMINATE_TEXT, VARIANT_DANGER, self)
-        self.return_button.held.connect(self.return_to_launch_requested.emit)
-        self.terminate_button.held.connect(self.terminate_requested.emit)
-
-        self.hint_label = QLabel(SAFETY_HOLD_HINT_TEXT, self)
-        set_role(self.hint_label, ROLE_HINT)
+        self.return_button = command_button(SAFETY_RETURN_TEXT, VARIANT_CAUTION, self)
+        self.terminate_button = command_button(SAFETY_TERMINATE_TEXT, VARIANT_DANGER, self)
+        self.return_button.clicked.connect(self.return_to_launch_requested.emit)
+        self.terminate_button.clicked.connect(self.terminate_requested.emit)
 
         self.status_label = QLabel(self)
         self.status_label.setWordWrap(True)
@@ -68,7 +65,6 @@ class SafetyPanel(Card):
         # neighbour anyone should reach for by accident.
         self.card_layout.addSpacing(SPACE_XL)
         self.add_widget(self.terminate_button)
-        self.add_widget(self.hint_label)
         self.add_widget(self.status_label)
         self.add_stretch()
 

@@ -7,6 +7,14 @@ terminal_time_format = "%H:%M:%S"
 terminal_max_lines = 500
 position_decimals = 2
 camera_unavailable_text = "Camera Module Not Available"
+# Shown in place of the last frame once the stream stops. A frozen picture
+# looks exactly like a live still one, so the age is the only thing that tells
+# them apart. {seconds} is how long ago the last frame arrived.
+camera_stale_text = "NO SIGNAL — {seconds} s"
+# How old the last frame has to be before the view says so (milliseconds).
+camera_stale_after_ms = 2500
+# How often that age is rechecked (milliseconds).
+camera_stale_check_interval_ms = 500
 # Texts for the buttons that remove/re-add a camera output from the UI.
 camera_remove_text = "x"
 camera_add_text = "+"

@@ -135,6 +135,45 @@
     </widget>
    </item>
    <item>
+    <widget class="QFrame" name="developercard">
+     <property name="surface" stdset="0">
+      <string>panel</string>
+     </property>
+     <layout class="QVBoxLayout" name="developerlayout">
+      <item>
+       <widget class="QLabel" name="developerheading">
+        <property name="role" stdset="0">
+         <string>heading</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QCheckBox" name="developermodeCheckBox">
+        <property name="text">
+         <string/>
+        </property>
+       </widget>
+      </item>
+      <item>
+       <widget class="QLabel" name="developerhintlabel">
+        <property name="role" stdset="0">
+         <string>hint</string>
+        </property>
+        <property name="text">
+         <string/>
+        </property>
+        <property name="wordWrap">
+         <bool>true</bool>
+        </property>
+       </widget>
+      </item>
+     </layout>
+    </widget>
+   </item>
+   <item>
     <widget class="QPushButton" name="continuebtn">
      <property name="enabled">
       <bool>false</bool>

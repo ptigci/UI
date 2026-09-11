@@ -1,8 +1,8 @@
 """Startup dialog, loaded from designer/selector.ui.
 
-Competition choice and vehicle counts live on the same screen. Only the
-count fields the chosen competition needs are shown, and the continue
-button stays disabled until a competition is picked.
+Competition choice, vehicle counts and developer mode live on the same
+screen. Only the fields the chosen competition needs are shown, and the
+continue button stays disabled until a competition is picked.
 
 The buttons take their text from the competition list in config, so a
 competition is named in one place and appears here by itself.
@@ -18,10 +18,14 @@ from PyQt6.QtWidgets import QButtonGroup, QDialog, QSizePolicy
 from config import (
     COMPETITIONS,
     Competition,
+    DEVELOPER_MODE_DEFAULT,
     DRONE_COUNT_DEFAULT,
     DRONE_COUNT_MAX,
     DRONE_COUNT_MIN,
     SELECTION_CONTINUE_TEXT,
+    SELECTION_DEVELOPER_HINT,
+    SELECTION_DEVELOPER_MODE_TEXT,
+    SELECTION_DEVELOPER_TITLE,
     SELECTION_DRONE_COUNT_TEXT,
     SELECTION_SUBTITLE,
     SELECTION_TITLE,
@@ -52,6 +56,7 @@ class SelectionResult:
     competition: Competition
     drone_count: int
     vtol_count: int
+    developer_mode: bool
 
 
 class SelectionWindow(QDialog):
@@ -72,7 +77,10 @@ class SelectionWindow(QDialog):
         self.vtolcountSpinBox.setValue(VTOL_COUNT_DEFAULT)
         self.align_count_fields()
 
-        # both count rows stay hidden until the competition decides what is needed
+        self.developermodeCheckBox.setChecked(DEVELOPER_MODE_DEFAULT)
+        # the count rows and the developer card stay hidden until the
+        # competition decides what is needed
+        self.developercard.setVisible(False)
         self.set_counts_visible(drones_visible=False, vtols_visible=False)
         self.continuebtn.clicked.connect(self.accept)
 
@@ -85,11 +93,15 @@ class SelectionWindow(QDialog):
         self.dronecountlabel.setText(SELECTION_DRONE_COUNT_TEXT)
         self.vtolcountlabel.setText(SELECTION_VTOL_COUNT_TEXT)
         self.continuebtn.setText(SELECTION_CONTINUE_TEXT)
+        self.developerheading.setText(SELECTION_DEVELOPER_TITLE)
+        self.developermodeCheckBox.setText(SELECTION_DEVELOPER_MODE_TEXT)
+        self.developerhintlabel.setText(SELECTION_DEVELOPER_HINT)
 
     def build_spacing(self) -> None:
         space_layout(self.dialoglayout, SPACE_XL, SPACE_LG)
         space_layout(self.competitionlayout)
         space_layout(self.countslayout)
+        space_layout(self.developerlayout)
 
     def build_count_field(self, count_field, minimum: int, maximum: int) -> None:
         """A count is two digits; letting it stretch across the card looks broken."""
@@ -136,7 +148,10 @@ class SelectionWindow(QDialog):
             vtol_count = self.vtolcountSpinBox.value()
         else:
             vtol_count = 0
-        return SelectionResult(competition, drone_count, vtol_count)
+        developer_mode = (
+            competition.supports_developer_mode and self.developermodeCheckBox.isChecked()
+        )
+        return SelectionResult(competition, drone_count, vtol_count, developer_mode)
 
     def on_competition_selected(self, competition_key: str) -> None:
         competition = self.competition_for(competition_key)
@@ -144,6 +159,7 @@ class SelectionWindow(QDialog):
             logger.error(f"Competition '{competition_key}' is missing from config/selection.toml.")
             return
         self.selected_competition = competition
+        self.developercard.setVisible(competition.supports_developer_mode)
         self.set_counts_visible(
             drones_visible=competition.uses_drones,
             vtols_visible=competition.uses_vtols,

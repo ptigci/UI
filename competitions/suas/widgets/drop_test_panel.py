@@ -9,6 +9,20 @@ target underneath; RTL or LAND ends the test. Nothing happens between presses,
 which is the point: a mechanism being proved for the first time should not also
 be deciding when to fire.
 
+There is one RELEASE per bay, because each bay has its own servo and proving
+that one button opens one bay is most of what a delivery test is for. The bays
+come from the payload state the aircraft publishes rather than from a list
+here, so they are whatever it says it is carrying, and one already spent greys
+out. In the winch flow the target decides which bay opens, so a press for the
+other one is refused by the aircraft with the reason.
+
+Beside each RELEASE is the press that goes the other way. The aircraft drives
+no servo when it starts up -- a bay that closed on its own would close on the
+hand loading it, and on the winch rig the clamp is the cutter -- so nothing
+grips a payload until HOLD is pressed. HOLD is the name of the clamp closing,
+not of a button that has to be held: every press on this panel fires on one
+click.
+
 The winged release is not flown by hand at all. The aircraft is on the mission
 that was loaded in Mission Planner and nothing here touches it — all the
 operator can do is watch the metres to the release point come down and see
@@ -23,7 +37,7 @@ does not need it.
 """
 
 from PyQt6.QtCore import pyqtSignal
-from PyQt6.QtWidgets import QLabel
+from PyQt6.QtWidgets import QHBoxLayout, QLabel, QVBoxLayout, QWidget
 
 from competitions.suas.config import (
     DROP_COUNTDOWN_CAPTION,
@@ -32,23 +46,26 @@ from competitions.suas.config import (
     DROP_GEOMETRY_CAPTION,
     DROP_GEOMETRY_FORMAT,
     DROP_GOTO_TEXT,
-    DROP_HOLD_HINT_TEXT,
+    DROP_HOLD_FORMAT,
     DROP_LAND_TEXT,
     DROP_PANEL_TITLE,
-    DROP_RELEASE_TEXT,
+    DROP_RELEASE_FORMAT,
+    DROP_RELEASE_WAITING_TEXT,
     DROP_RETURN_TEXT,
     DROP_TARGET_CAPTION,
     DROP_TARGET_FORMAT,
     DROP_WAITING_TEXT,
     DROP_WATCH_ONLY_TEXT,
     MISSING_VALUE_TEXT,
+    STATION_STATE_SPENT,
 )
-from competitions.suas.widgets.hold_button import HoldButton
-from theme import set_role, set_state
+from competitions.suas.widgets.command_button import command_button
+from theme import flush_layout, set_role, set_state
 from theme.tokens import (
     ROLE_HINT,
     SCALE_DISPLAY,
     SPACE_LG,
+    SPACE_XS,
     STATE_CAUTION,
     STATE_NONE,
     STATE_OK,
@@ -57,12 +74,19 @@ from theme.tokens import (
 )
 from widgets import Card, Readout
 
+# How the two presses of one bay share the row they sit in.
+RELEASE_BUTTON_WIDTH_SHARE = 2
+HOLD_BUTTON_WIDTH_SHARE = 1
+
 
 class DropTestPanel(Card):
     """What the aircraft is about to drop, and the presses that make it."""
 
     goto_target_requested = pyqtSignal()
-    release_requested = pyqtSignal()
+    # Which bay to open: each has its own servo, so each has its own button.
+    release_requested = pyqtSignal(str)
+    # And which bay to clamp shut on the payload that has just gone into it.
+    hold_requested = pyqtSignal(str)
     return_to_launch_requested = pyqtSignal()
     land_requested = pyqtSignal()
 
@@ -81,18 +105,29 @@ class DropTestPanel(Card):
         set_role(self.reason_label, ROLE_HINT)
         self.reason_label.setWordWrap(True)
 
-        self.goto_button = HoldButton(DROP_GOTO_TEXT, VARIANT_PRIMARY, self)
-        self.release_button = HoldButton(DROP_RELEASE_TEXT, VARIANT_CAUTION, self)
-        self.return_button = HoldButton(DROP_RETURN_TEXT, VARIANT_CAUTION, self)
-        self.land_button = HoldButton(DROP_LAND_TEXT, VARIANT_CAUTION, self)
+        self.goto_button = command_button(DROP_GOTO_TEXT, VARIANT_PRIMARY, self)
+        self.return_button = command_button(DROP_RETURN_TEXT, VARIANT_CAUTION, self)
+        self.land_button = command_button(DROP_LAND_TEXT, VARIANT_CAUTION, self)
 
-        self.goto_button.held.connect(self.goto_target_requested.emit)
-        self.release_button.held.connect(self.release_requested.emit)
-        self.return_button.held.connect(self.return_to_launch_requested.emit)
-        self.land_button.held.connect(self.land_requested.emit)
+        self.goto_button.clicked.connect(self.goto_target_requested.emit)
+        self.return_button.clicked.connect(self.return_to_launch_requested.emit)
+        self.land_button.clicked.connect(self.land_requested.emit)
 
-        self.hint_label = QLabel(DROP_HOLD_HINT_TEXT, self)
-        set_role(self.hint_label, ROLE_HINT)
+        # One row of two buttons per bay, added when the aircraft says what it
+        # is carrying. Until then there is a line saying so, because a RELEASE
+        # that names no bay is not a button worth offering.
+        self.release_buttons: dict = {}
+        self.hold_buttons: dict = {}
+        # Whether the aircraft takes a delivery press at all, remembered so a
+        # bay reported after the countdown gets the same answer as the rest.
+        self.deliveries_commandable = True
+        self.station_area = QWidget(self)
+        self.station_layout = QVBoxLayout(self.station_area)
+        flush_layout(self.station_layout, SPACE_XS)
+        self.station_waiting_label = QLabel(DROP_RELEASE_WAITING_TEXT, self)
+        set_role(self.station_waiting_label, ROLE_HINT)
+        self.station_waiting_label.setWordWrap(True)
+        self.station_layout.addWidget(self.station_waiting_label)
 
         self.status_label = QLabel(self)
         self.status_label.setWordWrap(True)
@@ -102,12 +137,11 @@ class DropTestPanel(Card):
         self.add_widget(self.geometry_reading)
         self.add_widget(self.reason_label)
         self.add_widget(self.goto_button)
-        self.add_widget(self.release_button)
+        self.add_widget(self.station_area)
         # The two that end the flight are not neighbours of the two that run it.
         self.card_layout.addSpacing(SPACE_LG)
         self.add_widget(self.return_button)
         self.add_widget(self.land_button)
-        self.add_widget(self.hint_label)
         self.add_widget(self.status_label)
         self.add_stretch()
 
@@ -182,17 +216,68 @@ class DropTestPanel(Card):
         )
 
     def show_delivery_buttons(self, commandable: bool) -> None:
-        """Hide the two presses the winged release has no use for.
+        """Hide the presses the winged release has no use for.
 
         Disabling them would be a lie of a different shape: the buttons are not
         unavailable, they are meaningless, and a greyed-out control reads as
         something that will come back.
+
+        HOLD stays either way. It clamps a bay on its payload rather than
+        flying anything, and a winged flight is loaded like every other one.
         """
+        self.deliveries_commandable = commandable
         self.goto_button.setVisible(commandable)
-        self.release_button.setVisible(commandable)
+        for button in self.release_buttons.values():
+            button.setVisible(commandable)
         if commandable:
             return
         self.reason_label.setText(DROP_WATCH_ONLY_TEXT)
+
+    def show_stations(self, payload_state) -> None:
+        """One row of presses per bay the aircraft says it has.
+
+        A spent bay keeps its buttons and loses its presses: it says what
+        happened to that payload, which buttons that vanished would not. There
+        is nothing left in it to release and nothing left in it to hold.
+        """
+        if not payload_state.stations:
+            return
+        self.station_waiting_label.setVisible(False)
+
+        for station in payload_state.stations:
+            if station.name not in self.release_buttons:
+                self.build_station_row(station.name)
+            loaded = station.state != STATION_STATE_SPENT
+            self.release_buttons[station.name].setEnabled(loaded)
+            self.hold_buttons[station.name].setEnabled(loaded)
+
+    def build_station_row(self, station_name: str) -> None:
+        """Add one bay's two presses, side by side and named for that bay."""
+        # "water_bottle" is a config name; the buttons say WATER BOTTLE.
+        label = station_name.replace("_", " ").upper()
+
+        release_button = command_button(DROP_RELEASE_FORMAT.format(station=label),
+                                        VARIANT_CAUTION, self)
+        release_button.clicked.connect(
+            lambda: self.release_requested.emit(station_name))
+        release_button.setVisible(self.deliveries_commandable)
+
+        hold_button = command_button(DROP_HOLD_FORMAT.format(station=label),
+                                     VARIANT_PRIMARY, self)
+        hold_button.clicked.connect(
+            lambda: self.hold_requested.emit(station_name))
+
+        # RELEASE keeps most of the row: it is the press being proved, and HOLD
+        # is the one that puts the bay back the way it started.
+        row = QWidget(self)
+        row_layout = QHBoxLayout(row)
+        flush_layout(row_layout, SPACE_XS)
+        row_layout.addWidget(release_button, RELEASE_BUTTON_WIDTH_SHARE)
+        row_layout.addWidget(hold_button, HOLD_BUTTON_WIDTH_SHARE)
+
+        self.release_buttons[station_name] = release_button
+        self.hold_buttons[station_name] = hold_button
+        self.station_layout.addWidget(row)
 
     # What the operator's last press came to
 

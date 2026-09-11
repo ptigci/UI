@@ -59,7 +59,6 @@ INDICATOR_SIZE = 16
 SLIDER_GROOVE_HEIGHT = 4
 SLIDER_HANDLE_SIZE = 14
 PROGRESS_HEIGHT = 6
-PROGRESS_HOLD_HEIGHT = 4
 
 
 def controls_sheet() -> str:
@@ -336,20 +335,5 @@ QProgressBar {{
 QProgressBar::chunk {{
     background-color: {ACCENT};
     border-radius: {RADIUS_PILL}px;
-}}
-
-/* The bar that fills while a hold-to-confirm control is held down. It borrows
-   the colour of the button it belongs to. */
-QProgressBar[variant="{VARIANT_CAUTION}"] {{
-    max-height: {PROGRESS_HOLD_HEIGHT}px;
-}}
-QProgressBar[variant="{VARIANT_CAUTION}"]::chunk {{
-    background-color: {STATUS_CAUTION};
-}}
-QProgressBar[variant="{VARIANT_DANGER}"] {{
-    max-height: {PROGRESS_HOLD_HEIGHT}px;
-}}
-QProgressBar[variant="{VARIANT_DANGER}"]::chunk {{
-    background-color: {STATUS_CRITICAL};
 }}
 """

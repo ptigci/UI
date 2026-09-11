@@ -1,12 +1,12 @@
-# Claude Code (kept local, not tracked)
-.claude/
-.claude.json
-.claude.json.backup
-CLAUDE.md
-
 # Documentation (kept local, not tracked)
 docs/
 guides/
+
+# Claude Code, kept local and never tracked
+CLAUDE.md
+.claude/
+.claude.json
+.claude.json.backup
 
 # Byte-compiled / cache
 __pycache__/
@@ -28,9 +28,10 @@ dist/
 *.egg-info/
 *.egg
 
-# Logs
+# Logs, and the sightings the TEST tab keeps beside them
 *.log
 log/
+logs/
 
 # Offline map tiles. Cut before travelling, hundreds of megabytes, and one per
 # flying site — the folder ships empty and the file is copied in on the day.
@@ -43,6 +44,7 @@ log/
 # Environment / secrets
 .env
 .env.*
+secrets.toml
 
 # Editor / IDE
 .vscode/
@@ -54,3 +56,5 @@ log/
 Thumbs.db
 
 install-pyenv-win.ps1
+competitions/suas/downloads/
+

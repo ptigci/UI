@@ -36,3 +36,12 @@ class ConnectionStatusLabel(QLabel):
 
         self.setText(self.prefix + age_text)
         set_state(self, state)
+
+    def set_link(self, age_milliseconds: int, detail_text: str, healthy: bool) -> None:
+        """Show a fuller link reading; red on a stale age or an unhealthy link."""
+        if age_milliseconds > CONNECTION_STALE_AFTER_MS or not healthy:
+            state = STATE_STALE
+        else:
+            state = STATE_OK
+        self.setText(self.prefix + detail_text)
+        set_state(self, state)

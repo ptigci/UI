@@ -11,7 +11,7 @@ from widgets.connection_status import ConnectionStatusLabel
 from widgets.readout import Readout
 from widgets.status_dot import StatusDot
 from widgets.status_pill import StatusPill
-from widgets.terminal_view import TerminalView
+from widgets.terminal_view import TerminalView, timestamped
 
 __all__ = [
     "CameraView",
@@ -21,4 +21,5 @@ __all__ = [
     "StatusDot",
     "StatusPill",
     "TerminalView",
+    "timestamped",
 ]

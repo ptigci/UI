@@ -21,6 +21,7 @@ dispatch_text = "SEND DRONES"
 hold_text = "HOLD"
 resume_text = "RESUME"
 abort_text = "ABORT"
+retreat_text = "RETREAT"
 recording_on_text = "REC"
 recording_off_text = "NOT RECORDING"
 record_text = "RECORD"
@@ -29,16 +30,6 @@ record_stop_text = "STOP RECORDING"
 ack_pending_format = "{command} {acknowledged}/{expected} acknowledged"
 ack_complete_format = "{command} acknowledged by all"
 ack_timeout_format = "{command} NOT acknowledged by {missing}"
-# Every mission command is confirmed before anything is published. The dispatch
-# dialog names its one precondition, because the ground station refuses a
-# dispatch while the Pasifik is still flying and the refusal is only visible as
-# nothing happening.
-dispatch_confirm_title = "Send the drones?"
-dispatch_confirm_question = "Every approved target is assigned to an agent and the swarm takes off. The Pasifik must already be on the ground."
-hold_confirm_title = "Hold every agent?"
-hold_confirm_question = "All agents stop and hold position where they are."
-abort_confirm_title = "Abort the mission?"
-abort_confirm_question = "Every vehicle stops what it is doing, returns and lands. Deliveries in progress are lost."
 
 # Vehicle cards.
 pasifik_title = "PASIFIK"
@@ -54,8 +45,10 @@ card_speed_format = "gs {ground_speed:.1f} m/s"
 card_airspeed_format = "as {airspeed:.1f} m/s"
 card_gps_format = "{gps_fix} / {rtk_status}"
 card_target_format = "target: {target_id}"
-card_payload_format = "payload: {payload_state}"
 card_no_target_text = "target: —"
+# The Pasifik's line in place of a target: the mission item it is flying to.
+card_waypoint_format = "waypoint {current} / {total}"
+card_no_waypoint_text = "waypoint: —"
 card_stale_format = "no data for {seconds:.1f} s"
 # Battery percentage below which the card turns into a warning.
 battery_warning_percent = 35.0
@@ -74,11 +67,32 @@ target_no_agent_text = "unassigned"
 target_empty_text = "No targets yet"
 veto_text = "VETO"
 requeue_text = "RE-QUEUE"
-veto_confirm_title = "Drop this target?"
-veto_confirm_question = "Target {target_id} is removed from the pool. No agent will fly to it."
+
+# Marking a victim on the live map, for somebody the detector never found. The
+# right button rather than the left, because the left one pans the map and an
+# operator dragging it must not leave targets behind him.
+mark_target_logged_format = "Target marked by the operator at {latitude:.6f}, {longitude:.6f}."
+# What the ground station made of that mark, which is what says the round trip
+# finished. The ring drawn on the marked spot comes down when this is logged.
+mark_target_answered_format = "The marked spot is target {target_id}, now selected."
+# A right click the map had nowhere to put. Everything that carries a position —
+# a map tile, a vehicle, a target, the scan area — gives it one, so this means
+# nothing at all has arrived yet.
+mark_target_refused_text = "Nothing can be marked yet: the map has no position, so it does not know what the click is pointing at."
+# Shown over the map until the first tile of the mosaic arrives, so an empty
+# grid is never mistaken for a scan that found nothing.
+map_waiting_text = "WAITING FOR THE SCAN"
 
 # Operator log under the map.
 log_panel_title = "MISSION LOG"
+# What the Pasifik's autopilot says, as it lands in the log: a short tag so an
+# autopilot line is told from one of our own. MAVLink severities run from 0
+# (emergency) to 7 (debug); anything up to the first threshold is drawn in the
+# critical colour, up to the second in the caution colour, the rest plainly.
+autopilot_line_format = "{tag} {text}"
+autopilot_tag = "FC"
+autopilot_critical_max_severity = 3
+autopilot_caution_max_severity = 4
 
 # Link health panel.
 link_panel_title = "LINK HEALTH"
@@ -113,6 +127,8 @@ target_list_min_height = 64
 
 # How the window divides itself up. The map is the part worth the space.
 [interface.layout]
+# The flight controls keep to their own height; the vehicle list scrolls.
+flight_panel_stretch = 0
 vehicle_list_stretch = 3
 link_health_stretch = 1
 map_stretch = 4
@@ -123,11 +139,98 @@ left_column_stretch = 1
 centre_column_stretch = 3
 right_column_stretch = 2
 
+# The pages of the window. DEV is only added in developer mode and is named in
+# developer.toml with the rest of that tab.
+[interface.tabs]
+mission_title = "MISSION"
+calibration_title = "CALIBRATION"
+
 # Entries of the target list's sort picker, in the order they appear.
 [interface.target_sort_labels]
 priority = "by priority"
 confidence = "by confidence"
 target_id = "by id"
+
+# The FLIGHT card in the left column: the Pasifik's own controls. Nothing here
+# moves an agent. The safe modes (QLAND, QRTL, RTL) and the plain ARM go out on
+# a click; the ones that can put the aircraft in a bad place are asked about
+# first, and the dialog says what will happen.
+[interface.flight]
+title = "FLIGHT"
+import_text = "IMPORT MISSION"
+start_text = "START MISSION"
+arm_text = "ARM"
+force_arm_text = "FORCE ARM"
+force_disarm_text = "FORCE DISARM"
+# How many buttons share a row in each group, and the modes' order. The card
+# is as wide as the side column and nothing may be clipped in it: at 320 px the
+# two mission buttons need a row each, ARM and FORCE ARM share one with FORCE
+# DISARM under them, and the modes go two by two. The last button of a group
+# takes the rest of its row.
+mission_columns = 1
+arm_columns = 2
+mode_columns = 2
+mode_order = ["manual", "auto", "qstabilize", "rtl", "qrtl", "qland"]
+result_caption = "LAST RESULT"
+result_none_text = "—"
+# Importing a mission: the file picker, and what the log says.
+file_dialog_title = "Open a Mission Planner export"
+file_filter = "Mission files (*.waypoints *.txt);;All files (*)"
+mission_sent_format = "Mission {name} sent to the Pasifik: {count} items. Waiting for the upload result."
+mission_file_error_format = "Mission {name} not sent: {reason}"
+# The answer to a command, as it lands in the log and on the card.
+result_accepted_format = "{command} accepted. {detail}"
+result_refused_format = "{command} REFUSED. {detail}"
+
+[interface.flight.mode_texts]
+manual = "MANUAL"
+auto = "AUTO"
+qstabilize = "QSTABILIZE"
+rtl = "RTL"
+qrtl = "QRTL"
+qland = "QLAND"
+
+# Errors the mission file reader can raise. Every one names the line.
+[interface.mission_file]
+bad_header_format = "line 1 is not a Mission Planner header ({header} expected)."
+bad_column_count_format = "line {line_number} has {count} fields, {expected} expected."
+bad_number_format = "line {line_number} has a value that is not a number ({value})."
+empty_text = "the file has no mission items."
+unreadable_format = "the file could not be read ({reason})."
+
+# The CALIBRATION tab: one card per calibration, and the progress card the
+# aircraft reports into. Only one calibration runs at a time.
+[interface.calibration]
+order = ["compass", "rc", "accel", "accel_simple", "motors"]
+start_text = "START"
+next_text = "NEXT"
+cancel_text = "CANCEL"
+progress_title = "PROGRESS"
+idle_text = "No calibration running. Press START on one of the cards."
+idle_pill_text = "IDLE"
+running_format = "{calibration} calibration"
+percent_minimum = 0
+percent_maximum = 100
+# How the cards and the progress card share the width of the page.
+cards_stretch = 2
+progress_stretch = 3
+# The state pill's colour per reported state. Keys are the names in
+# codes.calibration_state; values are design-system states.
+pill_states = { running = "info", waiting = "caution", done = "ok", failed = "critical", cancelled = "idle" }
+
+[interface.calibration.titles]
+compass = "COMPASS"
+rc = "RC"
+accel = "ACCEL"
+accel_simple = "ACCEL SIMPLE"
+motors = "MOTORS"
+
+[interface.calibration.hints]
+compass = "The compass in the GPS module. Turn the aircraft slowly through every axis until the fitness is reported."
+rc = "Sweep every stick and switch to its ends. The ranges are shown here to enter in Mission Planner."
+accel = "Six positions: level, left side, right side, nose down, nose up, on its back. Press NEXT once the aircraft is held still in each."
+accel_simple = "Aircraft level and still. One position, no NEXT."
+motors = "Props off. Each motor is run alone in turn, so the order and the direction can be checked."
 
 [mission]
 # While the mission is in one of these states agents are in the air, so the

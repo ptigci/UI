@@ -14,10 +14,18 @@ ribbon_armed_text = "ARMED"
 ribbon_disarmed_text = "DISARMED"
 ribbon_ground_speed_caption = "GROUND SPEED"
 ribbon_ground_speed_format = "{knots:.0f} kt"
+# Airspeed is not a rule; it is what the operator flies the aircraft by, so
+# it reads in metres per second first and in the judge's knots beside it.
+ribbon_airspeed_caption = "AIRSPEED"
+ribbon_airspeed_format = "{metres_per_second:.1f} m/s  {knots:.0f} kt"
 ribbon_altitude_caption = "ALTITUDE AGL"
 ribbon_altitude_format = "{feet:.0f} ft"
 ribbon_battery_caption = "BATTERY"
 ribbon_battery_format = "{voltage:.1f} V  {percent:.0f}%"
+# Appended to the reading so the operator can see which sensor it came from.
+# The aircraft can fail over from the pack ADC to the autopilot's estimate
+# without saying anything else about it, and the two are not the same number.
+ribbon_battery_source_format = "  {source}"
 ribbon_gps_caption = "GPS"
 ribbon_gps_format = "{fix}  {satellites} sats"
 ribbon_waypoint_radius_caption = "WP RADIUS"
@@ -28,7 +36,7 @@ ribbon_boundary_outside_text = "OUTSIDE"
 ribbon_home_caption = "HOME"
 ribbon_home_format = "{miles:.2f} mi"
 ribbon_safety_link_caption = "MAVLINK"
-ribbon_mission_link_caption = "MQTT"
+ribbon_mission_link_caption = "AIRCRAFT"
 ribbon_link_up_text = "UP"
 ribbon_link_down_text = "DOWN"
 
@@ -62,7 +70,6 @@ lap_invalid_format = "Lap {lap} invalidated - {reason}"
 safety_panel_title = "SAFETY"
 safety_return_text = "RTL"
 safety_terminate_text = "TERMINATE"
-safety_hold_hint_text = "hold to confirm"
 safety_sent_text = "SENT"
 safety_acknowledged_text = "ACKNOWLEDGED"
 safety_timeout_text = "NO ACKNOWLEDGEMENT"
@@ -85,10 +92,18 @@ drop_waiting_text = "No delivery being set up."
 # RTL and LAND are the same MAVLink path as the safety panel's RTL -- they are
 # repeated here so the sequence reads in the order it is flown.
 drop_goto_text = "GO TO DROP ZONE"
-drop_release_text = "RELEASE"
+# One release button per payload station, because each bay has its own servo:
+# on a delivery test you prove that one button opens one bay. The stations come
+# from the aircraft's own payload state, so the buttons are whatever it is
+# carrying rather than a second copy of the list.
+drop_release_format = "RELEASE {station}"
+# Next to it, the press that goes the other way. The aircraft drives no servo
+# when it starts, so nothing grips the payload until this is pressed: load the
+# bay, press HOLD, and the clamp closes on it.
+drop_hold_format = "HOLD {station}"
+drop_release_waiting_text = "waiting for the aircraft to say what it is carrying"
 drop_return_text = "RTL"
 drop_land_text = "LAND"
-drop_hold_hint_text = "hold to confirm"
 
 # What the aircraft said about the last press, which is not the same as what
 # the press asked for. A refusal here is normal: it means the mission was not
@@ -108,17 +123,112 @@ camera_no_signal_text = "NO PICTURE"
 camera_waiting_text = "WAITING FOR THE AIRCRAFT"
 camera_record_text = "START RECORDING"
 camera_stop_text = "STOP RECORDING"
-camera_hold_hint_text = "hold to confirm"
 camera_recording_text = "REC"
 camera_idle_text = "NOT RECORDING"
 camera_unknown_text = "UNKNOWN"
 camera_command_sent_text = "sent, waiting for the camera"
 camera_command_rejected_format = "refused - {reason}"
 
+# The mapping test panel. It sends a folder of recorded frames to the ground
+# services and shows the mosaic they build from it.
+mapping_panel_title = "MAPPING"
+mapping_waiting_text = "Waiting for survey frames."
+mapping_frames_caption = "FRAMES"
+mapping_frames_format = "{received} received  /  {used} in map"
+mapping_clock_caption = "STITCH TIME"
+mapping_clock_format = "{minutes:02d}:{seconds:02d}"
+mapping_open_folder_text = "OPEN FOLDER"
+mapping_export_text = "EXPORT TO USB"
+mapping_exported_format = "on the stick - {path}"
+mapping_browse_text = "CHOOSE FRAME FOLDER"
+mapping_start_text = "BUILD MAP"
+mapping_folder_dialog_title = "Choose the folder holding the recorded frames"
+mapping_no_folder_text = "No folder chosen."
+mapping_preview_placeholder_text = "NO MAP YET"
+mapping_request_sent_text = "sent, waiting for the ground services"
+mapping_running_format = "stitching: {received} received, {found} in the build, {skipped} without a pose"
+# Once the ground services start reporting frames, the count replaces the one
+# above and the bar under it fills.
+mapping_placing_format = "placing frame {placed} of {to_place}"
+mapping_complete_format = "map built from {used} frame(s) - {path}"
+mapping_failed_format = "failed - {reason}"
+
 map_tiles_missing_text = "MAP TILES MISSING"
+
+# The mission panel: the aircraft's phase in plain words, and the two presses
+# that stand in for a survey waypoint the aircraft never reported -- one at
+# each end of the scan.
+mission_panel_title = "MISSION"
+mission_phase_caption = "PHASE"
+mission_phase_unknown_text = "no word from the aircraft"
+# The phase line once the aircraft reports its flight clock: how many whole
+# minutes are left before the second look at the unanswered targets ends.
+mission_phase_time_left_format = "{phase}  -  {minutes} min left"
+mission_start_survey_text = "START SURVEY"
+mission_start_hint_text = "Starts detection and mapping by hand. Only for a survey waypoint the aircraft never reported; it locks the lap count."
+mission_finish_survey_text = "SCAN DONE"
+mission_finish_hint_text = "Press when the aircraft has finished the scan but is still reporting SURVEY RUNNING. The cards come up next, and it flies to the target once they are answered."
+mission_command_sent_text = "sent, waiting for the aircraft"
+mission_start_accepted_text = "the aircraft is starting the survey"
+mission_finish_accepted_text = "the aircraft is ending the scan"
+mission_command_rejected_format = "refused - {reason}"
+mission_command_timeout_text = "no answer from the aircraft"
+
+# The payload stations.
+payload_panel_title = "PAYLOAD"
+payload_station_format = "{target_class}  -  {state}"
+payload_waiting_text = "no word from the aircraft yet"
+
+# Labels drawn on the map beside the route and the targets.
+route_hover_label = "hover"
+route_release_label = "release"
+target_label_format = "{target_class} #{track_id} ({score:.1f})"
+
+# The first line of a detection card: the class and the figures the aircraft
+# chooses by, so the operator judges with the same numbers.
+detection_card_label_format = "{target_class}  x{count} seen  avg {average:.2f}  score {score:.1f}  -> {station}"
 map_recentre_text = "RE-CENTRE"
 map_follow_on_text = "FOLLOW"
 map_follow_off_text = "FREE"
+
+# The autopilot's log under the map. What the autopilot says in words lands
+# here with a short tag, so an autopilot line is told from one of our own,
+# and so does the answer to every aircraft command. MAVLink severities run
+# from 0 (emergency) to 7 (debug): anything up to the first threshold is
+# drawn in the critical colour, up to the second in the caution colour, the
+# rest plainly.
+log_panel_title = "AUTOPILOT"
+autopilot_line_format = "{tag} {text}"
+autopilot_tag = "FC"
+autopilot_critical_max_severity = 3
+autopilot_caution_max_severity = 4
+
+# The aircraft's state names, as the operator reads them.
+[interface.mission_phase_texts]
+idle = "waiting for AUTO"
+fly_laps = "flying laps"
+mission_interrupted = "AUTO LOST - waiting for it to come back"
+survey_pass = "SURVEY RUNNING"
+await_decisions = "survey done - waiting for your answers"
+revisit_targets = "looking again at the unanswered targets"
+select_target = "choosing a target"
+approach_target = "flying to the target"
+release_payload = "releasing"
+post_release = "released - clearing the drop"
+return_home = "returning home"
+land = "landing"
+mission_complete = "MISSION COMPLETE"
+failsafe_hold = "STOOD DOWN"
+ballistic_watch = "watching for a release"
+await_command = "waiting for a press"
+
+[interface.mission_phase_groups]
+# Which states light the phase green, which red, and in which each of the two
+# survey presses may be made.
+survey_states = ["survey_pass"]
+problem_states = ["mission_interrupted", "failsafe_hold"]
+start_survey_states = ["fly_laps"]
+finish_survey_states = ["survey_pass"]
 
 [interface.detection]
 # The line under the browser. §3.6.3 does not score detection, only where the
@@ -139,27 +249,42 @@ unknown_class_name = "unknown"
 operator_id = "gcs"
 
 [interface.layout]
-map_stretch = 4
-# The detection browser is the only thing in the side column that grows:
-# the lap tracker and the safety panel take the height they need, and
-# everything left over goes to the crop the operator is judging.
+map_stretch = 1
+side_column_stretch = 0
+review_column_stretch = 0
+# Inside the map column the map takes most of the height and the autopilot
+# log under it takes the rest; the map controls between them take none.
+map_row_stretch = 4
+log_row_stretch = 1
+# The picture takes the height below, and the crop under it takes everything
+# the left column has left. Neither is ever scrolled out of sight.
 detection_column_stretch = 1
-side_column_stretch = 1
-# Wide enough for the detection browser, which is the widest thing in the
-# column. Narrower than its minimum and Qt squeezes the panel below what it
-# can draw, and its contents overlap each other -- which is what a 340 px
-# column did once the review browser moved in.
-side_column_width = 470
+# Both side columns are a fixed width and the map takes whatever is left, so
+# widening the window can only ever give the map more room.
+#
+# The left column holds the picture and the crop under it. It is set by the
+# detection browser, which needs 391 px for the crop with a browse arrow either
+# side of it; the picture is sized to whatever this leaves.
+review_column_width = 400
+# The right column holds everything that is read rather than looked at. It is
+# set by the widest panel in it -- the mapping bench, at 428 px -- plus the
+# scroll bar. Narrower than that and Qt squeezes the panels below the size they
+# can draw in, and their contents overlap each other.
+side_column_width = 450
 # Two rows of captioned readings. Everything the row does not take goes to the
 # map, so this is the smallest height that still fits them.
 ribbon_minimum_height = 96
 ribbon_columns = 6
 clock_minimum_height = 72
-# The live picture in the side column. Tall enough to see what the camera is
-# pointing at, short enough that the detection browser under it still fits on a
-# laptop screen. The preview is 640 px wide (SUAS/computer/config/video.toml)
-# and 16:9, so this is about what it wants at the column's width.
-video_minimum_height = 240
+# The height of the live picture. Fixed rather than a minimum, and it is the
+# 16:9 the preview arrives in: the card leaves 364 px of the left column for
+# the picture, and 364 wide is 205 tall. Anything else stretches the frame,
+# which is the one thing that must not happen to a picture somebody is judging
+# a target from. Change it with review_column_width.
+video_height = 205
+# The mosaic preview in the mapping test panel. A mosaic is closer to square
+# than the video, so it gets a little more height.
+mapping_preview_minimum_height = 280
 
 [map]
 default_latitude = 36.2155
@@ -185,9 +310,27 @@ runway = "#2FD07B"
 waypoint = "#4DA6FF"
 waypoint_radius = "#2A4F73"
 waypoint_reached = "#2FD07B"
+# The waypoint the aircraft is flying to, and the leg from the aircraft to it.
+waypoint_current = "#FBB21C"
+next_leg = "#FBB21C"
 aircraft = "#FFFFFF"
 track = "#4DA6FF"
 label = "#E0E0E0"
+# The flight readout box in the map's corner. The background carries an alpha
+# so the tiles stay visible through it.
+readout_background = "#B0101010"
+readout_border = "#404040"
+readout_text = "#E0E0E0"
+# The planned route and its two special points.
+route = "#FFD166"
+route_hover = "#FFD166"
+route_release = "#FF7A45"
+# Targets by what the operator said, and the ground a denial closed.
+target_pending = "#C8C8C8"
+target_approved = "#2FD07B"
+target_delivered = "#1E8C55"
+target_denied = "#FF4D5E"
+blacklist = "#FF4D5E"
 
 [map.sizes]
 flight_boundary_width = 3
@@ -195,7 +338,134 @@ search_boundary_width = 2
 runway_width = 2
 waypoint_radius_width = 1
 waypoint_marker_radius = 5
+# The waypoint being flown to is drawn larger than the rest.
+waypoint_current_marker_radius = 8
 aircraft_marker_radius = 8
+# The heading arrow: how far its tip reaches from the marker's centre, and
+# how wide its base is where it sits on the marker.
 aircraft_heading_length = 18
+aircraft_heading_width = 10
+next_leg_width = 2
 track_width = 2
 label_offset = 10
+route_width = 2
+route_marker_radius = 5
+target_marker_radius = 6
+blacklist_width = 1
+
+# The pages of the window. MISSION is the judge's screen; the calibrations
+# sit on a tab of their own, for the bench and the minutes before takeoff.
+# TEST and DEV are only added in developer mode and are named with the rest
+# of those tabs.
+[interface.tabs]
+mission_title = "MISSION"
+calibration_title = "CALIBRATION"
+
+# The FLIGHT card in the right column, under the mission panel: the aircraft's
+# own controls. The safe modes (QLAND, QRTL, RTL, AUTO, QSTABILIZE) and the
+# plain ARM go out on a click; the ones that can put the aircraft in a bad
+# place are asked about first, and the dialog says what will happen. Nothing
+# here touches the safety link.
+[interface.flight]
+title = "FLIGHT"
+import_text = "IMPORT MISSION"
+start_text = "START MISSION"
+arm_text = "ARM"
+force_arm_text = "FORCE ARM"
+force_disarm_text = "FORCE DISARM"
+# The mode buttons, in the order they sit on the card, and how many per row.
+mode_order = ["manual", "auto", "qstabilize", "rtl", "qrtl", "qland"]
+mode_columns = 3
+confirmed_modes = ["manual"]
+result_caption = "LAST RESULT"
+result_none_text = "--"
+start_confirm_title = "Start the mission?"
+start_confirm_question = "The aircraft flies the uploaded mission from its first item. Nothing else is checked here: it must be armed, and the mission must have uploaded."
+force_arm_confirm_title = "Force the arm?"
+force_arm_confirm_question = "The autopilot arms even where its own checks would refuse. Whatever it was refusing for is still true."
+force_disarm_confirm_title = "Force the disarm?"
+force_disarm_confirm_question = "The motors stop at once, in the air too. This is not a landing."
+mode_confirm_title = "Switch to {mode}?"
+mode_confirm_question = "The aircraft leaves its automatic flight and follows the transmitter sticks. Somebody must be on them."
+# Importing a mission: the file picker, and what the log says.
+file_dialog_title = "Open a Mission Planner export"
+file_filter = "Mission files (*.waypoints *.txt);;All files (*)"
+mission_sent_format = "Mission {name} sent to the aircraft: {count} items. Waiting for the upload result."
+mission_file_error_format = "Mission {name} not sent: {reason}"
+# What the log and the card say as a command goes out and is answered. The
+# acknowledgement says the aircraft took the press; the result says what came
+# of it.
+command_sent_format = "{command} sent to the aircraft."
+mode_sent_format = "Mode {mode} asked of the aircraft."
+ack_accepted_text = "Taken by the aircraft. Waiting for the result."
+ack_rejected_format = "REFUSED by the aircraft. {reason}"
+result_accepted_format = "{command} accepted. {detail}"
+result_refused_format = "{command} REFUSED. {detail}"
+
+[interface.flight.mode_texts]
+manual = "MANUAL"
+auto = "AUTO"
+qstabilize = "QSTABILIZE"
+rtl = "RTL"
+qrtl = "QRTL"
+qland = "QLAND"
+
+# Errors the mission file reader can raise. Every one names the line.
+[interface.mission_file]
+bad_header_format = "line 1 is not a Mission Planner header ({header} expected)."
+bad_column_count_format = "line {line_number} has {count} fields, {expected} expected."
+bad_number_format = "line {line_number} has a value that is not a number ({value})."
+empty_text = "the file has no mission items."
+unreadable_format = "the file could not be read ({reason})."
+
+# The CALIBRATION tab: one card per calibration, and the progress card the
+# aircraft reports into. Only one calibration runs at a time.
+[interface.calibration]
+order = ["compass", "rc", "accel", "accel_simple", "motors"]
+start_text = "START"
+next_text = "NEXT"
+cancel_text = "CANCEL"
+progress_title = "PROGRESS"
+idle_text = "No calibration running. Press START on one of the cards."
+idle_pill_text = "IDLE"
+running_format = "{calibration} calibration"
+percent_minimum = 0
+percent_maximum = 100
+# How the cards and the progress card share the width of the page.
+cards_stretch = 2
+progress_stretch = 3
+command_sent_format = "Calibration {calibration}: {action} sent to the aircraft."
+command_rejected_format = "Calibration press REFUSED by the aircraft. {reason}"
+finished_format = "Calibration {calibration} {state}. {detail}"
+# The state pill's colour per reported state. Keys are the names in
+# codes.calibration_state; values are design-system states.
+pill_states = { running = "info", waiting = "caution", done = "ok", failed = "critical", cancelled = "idle" }
+
+[interface.calibration.titles]
+compass = "COMPASS"
+rc = "RC"
+accel = "ACCEL"
+accel_simple = "ACCEL SIMPLE"
+motors = "MOTORS"
+
+[interface.calibration.hints]
+compass = "The compass in the GPS module. Turn the aircraft slowly through every axis until the fitness is reported."
+rc = "Sweep every stick and switch to its ends. The ranges are shown here to enter in Mission Planner."
+accel = "Six positions: level, left side, right side, nose down, nose up, on its back. Press NEXT once the aircraft is held still in each."
+accel_simple = "Aircraft level and still. One position, no NEXT."
+motors = "Props off. Each motor is run alone in turn, so the order and the direction can be checked."
+
+# The aircraft's flight numbers, drawn in a corner of the map so the operator
+# reads them without leaving the picture. Metres and metres per second here:
+# the ribbon carries the judge's knots and feet. Each line takes a value
+# already written with number_format, or the missing-value text.
+[map.readout]
+corner = "top_right"
+margin = 16
+padding = 8
+line_spacing = 4
+number_format = "{value:.1f}"
+ground_speed_format = "GS  {value} m/s"
+airspeed_format = "AS  {value} m/s"
+altitude_format = "ALT {value} m"
+waypoint_format = "WP  {current} / {total}"

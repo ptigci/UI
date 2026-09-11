@@ -1,14 +1,78 @@
 # Window and widget constants used only by the Sürü İHA interface. Widget
 # sizes and styles live in the designer/*.ui files (edit with Qt Designer).
 
-[ui]
-# The latency calibration spins the motors, so the operator is asked before
-# anything is sent. Answering No still measures the link, without the motors.
-latency_props_title = "Are the propellers removed?"
-latency_props_question = """This calibration arms the drone and commands a takeoff, so the motors will spin.
+[link_health]
+# Every drone streams its position at a fixed rate (drone/config/flight.yaml
+# position_publish_interval), so the link is judged on what arrives against
+# what should: messages received over the window against rate x window.
+telemetry_rate_hz = 5
+window_s = 5.0
+# Above this share of missing messages the connection label turns red even
+# while messages are still arriving.
+loss_warn_percent = 20
+text = "{age} ms | {rate:.1f} Hz | {loss:.0f}% loss"
 
-Yes  — propellers are OFF, measure the motor response too.
-No   — measure the link latency only, motors stay still."""
+[link_test]
+duration_s = 10
+button_text = "LINK TEST"
+window_title = "Link test"
+running_text = "Probing the mesh from the ticked drones and the ground station for {seconds} s ..."
+# Shown once the probing time is over, while the drones send their rows in.
+collecting_text = "Probing done; collecting the rows from every drone ..."
+progress_tick_ms = 100
+# The three result sections each get a tab of their own: side by side none of
+# them had the width its table wanted, and the pair table alone carries ten
+# columns.
+pairs_tab_title = "PAIRS"
+file_text = "Saved to {file}"
+# Shown instead of the file line when no drone was ticked, so nothing was probed.
+air_only_text = "No drone was ticked, so only the air was scanned: no rows and no file."
+air_only_running_text = "No drone ticked; scanning the WiFi on the air ..."
+retest_text = "RETEST"
+# Ticked, the bridges are left alone during the test, as in flight.
+swarm_only_text = "Swarm only"
+swarm_only_hint = "Leave the bridges alone during the test, as in flight: the loss measured is the real one, but nothing is learned about the air."
+# The channel box: a test runs on the chosen channel and every bridge comes
+# back afterwards; CHANGE CHANNEL moves every node there for good and writes
+# it into their configs. 2.4 GHz WiFi channels run 1 to 13 here.
+channel_min = 1
+channel_max = 13
+channel_config_text = "Config channel"
+channel_item_text = "Channel {channel}"
+tested_on_text = "Tested on channel {channel}. "
+change_channel_text = "CHANGE CHANNEL"
+change_channel_title = "Change the mesh channel?"
+change_channel_question = """Move every node to mesh channel {channel} for good?
+
+Every drone must be on and hearing the ground station right now: one that misses the command stays on the old channel and drops off the mesh. The result line shows which nodes answered."""
+gcs_name = "GCS"
+columns = ["from", "to", "heard", "lost", "loss %", "rtt avg ms", "rtt max ms", "jitter ms", "longest gap ms", "corrupt lines"]
+# The section under the rows: the WiFi networks every node's own radio heard
+# on the 2.4 GHz band beside the probing, the ones on the mesh channel first.
+# "air busy %" is what an access point says about its own channel's load;
+# only the ground station's WiFi card reads it, the Pis leave it blank.
+# One entry per node in the test: the channel its config sets and the one its
+# bridge says the radio is on. A node that never reported is the one to look at.
+channel_line = "{node}: radio on channel {radio}, config {config}"
+channel_missing_line = "{node}: no answer"
+channel_separator = "   |   "
+# What each node's bridge heard while listening to the whole channel during
+# the test: how full the channel was, the RF noise floor, and every source it
+# could tell apart. Frames it could not decode (neighbouring channels,
+# collisions, anything that is not WiFi) are the "unknown" source.
+air_tab_title = "ON THE AIR"
+air_summary_line = "{node}: channel busy {busy} %, noise floor {noise} dBm over {seconds} s"
+air_summary_missing_line = "{node}: no air report"
+air_swarm_only_text = "Swarm only: the bridges did not listen to the air."
+sniff_columns = ["node", "source", "kind", "name", "frames", "air %", "rssi dBm", "rate Mbps"]
+sniff_kind_names = { ap = "access point", swarm = "own swarm", espnow = "other ESP-NOW", client = "client", control = "control frames", unknown = "unknown (not decodable)", other = "other" }
+networks_tab_title = "WIFI NETWORKS"
+air_hint = "What each node's WiFi radio hears on the 2.4 GHz band. A network marked as on the mesh channel shares channel {channel} with the swarm; switch it off or move it and run the test again. Bluetooth, RC links and video senders use the same band but cannot be named here - they only show as loss."
+air_columns = ["node", "network", "channel", "signal %", "air busy %", "on mesh channel"]
+air_overlap_mark = "yes"
+air_hidden_network_text = "(hidden)"
+
+[ui]
 # Layout of the camera / telemetry monitor grids in the swarm tab.
 # Cameras beyond columns × rows go to extra pages behind the < > buttons.
 swarm_grid_columns = 2
@@ -23,19 +87,42 @@ swarm_camera_header_height = 34
 swarm_telemetry_visible_drones = 4
 # Per-drone mission state shown until the first state message arrives.
 state_unknown_text = "-"
-# Per-drone PPS clock indicator, fed by the drone/{id}/clock reports.
+# Per-drone clock indicator, fed by the drone/{id}/clock reports. PPS synced
+# means a live pulse is steering that companion clock right now. Synced means
+# the drone lost its own pulse and follows a sibling that still has one, which
+# is close enough to fly barriers on. Swarm synced means nothing is steering
+# its clock at all and it is reading the swarm's off the mesh beacons, which
+# still keeps it in step. Anything else is NO SYNC, including a clock that
+# merely happens to read close to right.
 clock_waiting_text = "PPS: -"
 clock_synced_text = "PPS: synced"
+clock_peer_text = "Time: synced"
+clock_swarm_text = "Swarm: synced"
 clock_no_sync_text = "PPS: NO SYNC"
+# Said in caution yellow when a mission is started and some drone has no PPS
+# lock. Flying without one is allowed, but the operator has to know the
+# barrier instants are only as good as the clocks behind them.
+mission_without_pps_text = "Mission started without PPS on {drones} - barrier instants are only as good as those clocks."
 # Mission 1 target selector: shown at spinbox value 0 (drone id from the QR).
 mission_target_auto_text = "AUTO"
 # MISSION 2 is a toggle: the same button starts the RC session and ends it.
 # The start text is also the button's label in designer/swarm_panel.ui.
 mission2_start_text = "MISSION 2"
 mission2_stop_text = "STOP MISSION 2"
+# Shown in brackets after the button text while the ground station is still
+# sending the command to some drones; {drones} is their ids.
+mission2_waiting_text = "waiting: {drones}"
+mission2_all_in_text = "all in"
+mission2_still_in_text = "still flying: {drones}"
 # QR content panel in the swarm tab.
 qr_panel_title = "QR CONTENT"
 qr_no_data_text = "No QR decoded yet"
+# One tab per decoded QR in the row above the content; {qr_id} is the QR number.
+qr_tab_label = "QR {qr_id}"
+qr_free_scan_tab_label = "Free scan"
+# A QR arrives as one long line of JSON; this is how far each level of nesting
+# is stepped in when it is laid out for reading.
+qr_indent_spaces = 2
 # Drone states that mean a mission is flying. While any drone reports one of
 # these the command buttons are greyed out: the şartname allows the ground
 # station no input during a mission beyond the start command, and the drones

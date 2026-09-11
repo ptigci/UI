@@ -1,8 +1,14 @@
-"""The map: scan area, vehicles, tracks, targets and who is flying to what.
+"""The map: the scanned ground, vehicles, tracks, targets and who flies to what.
 
 It draws whatever the controller has; nothing here talks to MQTT. The view
 fits itself to the mission until the operator zooms or pans, and a double
 click gives that automatic fit back.
+
+Under everything else is the mosaic the ground station builds out of the
+Pasifik's scan, which grows while the aircraft flies. It is what makes the right
+button mean something: the operator can see a victim the detector missed, point
+at them, and the click comes back out of the projection as a coordinate the
+swarm can be sent to.
 """
 
 import logging
@@ -14,11 +20,18 @@ from PyQt6.QtWidgets import QWidget
 from competitions.international_uav.config import (
     MAP_COLORS,
     MAP_TARGET_MARKER_RADIUS,
+    MAP_WAITING_TEXT,
     MAP_ZOOM_STEP,
 )
+from competitions.international_uav.widgets.map.flight_readout import draw_flight_readout
 from competitions.international_uav.widgets.map.map_background import draw_grid, draw_scale_bar
 from competitions.international_uav.widgets.map.map_projection import MapProjection
-from competitions.international_uav.widgets.map.scan_overlay import draw_scan_area
+from competitions.international_uav.widgets.map.mission_route import draw_mission_route
+from competitions.international_uav.widgets.map.mosaic_layer import MosaicLayer, draw_mosaic
+from competitions.international_uav.widgets.map.pending_mark import (
+    draw_pending_mark,
+    target_answering,
+)
 from competitions.international_uav.widgets.map.target_markers import draw_targets
 from competitions.international_uav.widgets.map.vehicle_markers import draw_vehicles
 
@@ -33,15 +46,26 @@ class MapView(QWidget):
     """Bird's eye view of the mission area."""
 
     target_clicked = pyqtSignal(str)
+    # Where on the ground the operator pointed, when he asks for a target there.
+    ground_marked = pyqtSignal(float, float)
+    # The target the ground station made of that mark, once it says so.
+    mark_answered = pyqtSignal(str)
+    # A mark the map had nowhere to put, so the operator is told rather than
+    # left watching a right click do nothing.
+    mark_refused = pyqtSignal()
 
     def __init__(self, parent=None) -> None:
         super().__init__(parent)
         self.projection = MapProjection()
+        self.mosaic = MosaicLayer()
         self.vehicles: list = []
         self.targets: list = []
-        self.scan_polygon: list = []
-        self.scan_legs: list = []
+        # The Pasifik's mission, and the sequence number of the item it flies to.
+        self.waypoints: list = []
+        self.current_sequence: int | None = None
         self.selected_target_id: str | None = None
+        # Where the operator marked a victim, until the ground station answers.
+        self.pending_mark: tuple[float, float] | None = None
 
         # Automatic fitting stops the moment the operator takes over.
         self.auto_fit = True
@@ -50,16 +74,43 @@ class MapView(QWidget):
         self.setMinimumSize(320, 240)
         self.setMouseTracking(False)
 
-    def show_mission(self, vehicles: list, targets: list, scan_polygon: list, scan_legs: list) -> None:
+    def show_mission(self, vehicles: list, targets: list, waypoints: list, current_sequence) -> None:
         self.vehicles = vehicles
         self.targets = targets
-        self.scan_polygon = scan_polygon
-        self.scan_legs = scan_legs
+        self.waypoints = waypoints
+        self.current_sequence = current_sequence
         self.update()
+
+    def show_map_tile(self, payload: dict) -> None:
+        """Take one tile of the growing mosaic and repaint if it is new."""
+        if self.mosaic.add_tile(**payload):
+            self.update()
 
     def select_target(self, target_id: str | None) -> None:
         self.selected_target_id = target_id
         self.update()
+
+    def show_pending_mark(self, latitude: float, longitude: float) -> None:
+        """Stand a mark where the operator pointed, so the click has an answer.
+
+        It stays there until the ground station replies with a target, which is
+        also what says the mark got through: one left on the map is one nobody
+        has acted on.
+        """
+        self.pending_mark = (latitude, longitude)
+        self.update()
+
+    def settle_pending_mark(self) -> None:
+        """Take the mark down once the target it became is on the map.
+
+        Called when a target message arrives, not on every repaint: a mark is
+        only answered by the ground station, never by the interface hoping.
+        """
+        target = target_answering(self.pending_mark, self.targets, self.projection)
+        if target is None:
+            return
+        self.pending_mark = None
+        self.mark_answered.emit(target.target_id)
 
     def fit_to_mission(self) -> None:
         self.auto_fit = True
@@ -75,8 +126,11 @@ class MapView(QWidget):
         self.projection.set_view_size(self.width(), self.height())
         self.prepare_projection()
 
+        draw_mosaic(painter, self.projection, self.mosaic)
         draw_grid(painter, self.projection)
-        draw_scan_area(painter, self.projection, self.scan_polygon, self.scan_legs)
+        draw_mission_route(
+            painter, self.projection, self.waypoints, self.current_sequence, self.vehicles
+        )
         draw_targets(
             painter,
             self.projection,
@@ -85,8 +139,17 @@ class MapView(QWidget):
             self.selected_target_id,
         )
         draw_vehicles(painter, self.projection, self.vehicles)
+        draw_pending_mark(painter, self.projection, self.pending_mark)
+        draw_flight_readout(painter, self.projection, self.vehicles)
         draw_scale_bar(painter, self.projection)
+        if self.mosaic.is_empty():
+            self.draw_waiting_notice(painter)
         painter.end()
+
+    def draw_waiting_notice(self, painter) -> None:
+        """Say the map is waiting, so an empty grid is not read as empty ground."""
+        painter.setPen(QColor(MAP_COLORS["label"]))
+        painter.drawText(self.rect(), Qt.AlignmentFlag.AlignCenter, MAP_WAITING_TEXT)
 
     def prepare_projection(self) -> None:
         """Set the origin from the first position seen, then fit if allowed."""
@@ -101,7 +164,7 @@ class MapView(QWidget):
 
     def mission_coordinates(self) -> list:
         """Everything that has to stay on screen while the map fits itself."""
-        coordinates = list(self.scan_polygon)
+        coordinates = [(waypoint.latitude, waypoint.longitude) for waypoint in self.waypoints]
         coordinates.extend(
             (vehicle.latitude, vehicle.longitude)
             for vehicle in self.vehicles
@@ -112,6 +175,7 @@ class MapView(QWidget):
             for target in self.targets
             if target.has_position()
         )
+        coordinates.extend(self.mosaic.corners())
         return coordinates
 
     # Operator input
@@ -125,6 +189,9 @@ class MapView(QWidget):
         self.update()
 
     def mousePressEvent(self, event) -> None:
+        if event.button() == Qt.MouseButton.RightButton:
+            self.mark_ground_at(event.position())
+            return
         if event.button() != Qt.MouseButton.LeftButton:
             return
         clicked_target_id = self.target_at(event.position())
@@ -148,6 +215,21 @@ class MapView(QWidget):
 
     def mouseDoubleClickEvent(self, event) -> None:
         self.fit_to_mission()
+
+    def mark_ground_at(self, click_position) -> None:
+        """Ask for a target where the operator pointed.
+
+        Refused until the map has an origin, which a tile, a vehicle, a target
+        or the mission's waypoints all give it. Before any of them the map is drawn around
+        a default centre nobody surveyed, and a target placed on it would send an
+        agent to a coordinate nobody chose.
+        """
+        if not self.projection.origin_set:
+            logger.warning("The map has no position yet; there is nothing to mark.")
+            self.mark_refused.emit()
+            return
+        latitude, longitude = self.projection.to_coordinate(click_position)
+        self.ground_marked.emit(latitude, longitude)
 
     def target_at(self, click_position):
         """The target under the click, if any is close enough."""

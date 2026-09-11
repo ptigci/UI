@@ -1,0 +1,385 @@
+# The DEV tab: running the aircraft software on the VTOL's Pi over SSH, the
+# ground services on this laptop, and checking every link the mission uses.
+#
+# The Pi is reached over the cable, straight to the laptop on the bench and
+# through the Rocket pair on the field. The vtol node is a transient systemd
+# unit, so it keeps running when this window, the SSH connection or the whole
+# laptop goes away, and its output is read back out of the journal. Nothing
+# here is shown unless the interface was started in developer mode.
+
+[developer]
+ssh_program = "ssh"
+# Nothing in a tab can answer a password prompt or a host key question, so ssh
+# is told never to ask: it fails with a message instead of hanging forever. The
+# connect timeout is what makes a Pi that is off report back in seconds.
+ssh_options = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new", "-o", "ConnectTimeout=5"]
+# Windows cannot ask a console process to close, so a monitor that is still
+# alive this long after being asked is killed.
+stop_wait_ms = 200
+# How often the Pi is asked whether the vtol unit is running, so "is it
+# running?" does not need a monitor open. A question that has not been
+# answered yet is not asked again.
+status_poll_s = 5
+# How short the live journal may be drawn.
+monitor_min_height = 160
+# The sudo password for REBOOT PI is never written here -- this file is in
+# git. Put it in secrets.toml next to this one, which is not:
+#
+#     [developer]
+#     sudo_password = "the password"
+#
+# With no password set, sudo is run with -n and a Pi that wants one says so.
+
+[developer.vtol]
+# How the tab reaches the Pi: "ethernet" its wired address, over the cable on
+# the bench and through the Rocket pair on the field, "wifi" its name on the
+# lab wifi. The wired address is fixed in the Pi's own network profile, so it
+# answers whether or not the Pi is on wifi as well, and it is the one to use:
+# the wifi name follows a lease and can lead anywhere. This is separate from
+# the connection the aircraft dials the ground on (vtol/config/link.toml), so
+# during a radio test SSH can stay on the cable while the mission link is on
+# the Rockets.
+ssh_connection = "ethernet"
+ethernet_host = "cezeri@rpi5.local"
+wifi_host = "cezeri@rpi5.local"
+repository_path = "/home/cezeri/SUAS-2026"
+app_directory = "vtol"
+unit_name = "vtol"
+
+# What runs on this laptop rather than on the Pi: the ground services always,
+# and the vtol node when SIMULATION is ticked, because SITL lives here. Paths
+# are relative to the UI root. Each app's venv interpreter is used when it
+# exists and the fallback otherwise, so a laptop without the venv still gets
+# something.
+[developer.local]
+fallback_python = "python"
+# Unbuffered, or a node's output sits in a pipe and arrives in bursts; UTF-8,
+# or a Windows python writes the console codepage and the tab misreads it.
+environment = { PYTHONUNBUFFERED = "1", PYTHONIOENCODING = "utf-8" }
+# Every START writes the SIMULATION box into this line of these files first,
+# so the laptop is never left in the wrong mode by accident. The Pi is not
+# touched: its checkout stays on real hardware. The pattern matches the one
+# bare `enabled` key in vtol/config/general.toml, the [simulation] one; the
+# ground services have no switch.
+simulation_files = ["../SUAS-2026/vtol/config/general.toml"]
+simulation_pattern = "^enabled = .*$"
+simulation_line = "enabled = {value}"
+
+[developer.local.computer]
+directory = "../SUAS-2026/computer"
+python = "../SUAS-2026/computer/venv/Scripts/python.exe"
+script = "main.py"
+arguments = []
+
+[developer.local.vtol]
+directory = "../SUAS-2026/vtol"
+python = "../SUAS-2026/vtol/venv/Scripts/python.exe"
+script = "main.py"
+arguments = []
+
+# TEST MISSION: the operator's job against SITL, done by a script instead of a
+# human with Mission Planner -- upload the lap-and-survey mission, arm, start
+# AUTO, disconnect. It builds the mission from the aircraft's own mission.toml
+# and refuses to upload one whose item numbers the aircraft is not watching
+# for; the shape of the flight is tools/config/sitl_mission.toml.
+#
+# --fence writes the fence parameters a restarted SITL container has forgotten.
+# Nothing here goes near the real aircraft: the button is only enabled with
+# SIMULATION ticked.
+[developer.local.test_mission]
+directory = "../SUAS-2026"
+python = "../SUAS-2026/vtol/venv/Scripts/python.exe"
+script = "tools/sitl_operator.py"
+arguments = ["--start", "--fence"]
+
+# PUSH TO PI sends the branch checked out on this laptop straight into the Pi's
+# own checkout over ssh. It is how the Pi is updated when it has no way out to
+# GitHub -- on the field, or on the cable through the Rocket pair -- where GIT
+# PULL has nothing to talk to. The directory is relative to the UI root, as
+# everywhere else here.
+[developer.push]
+git_program = "git"
+directory = "../SUAS-2026"
+# The Pi's git is told to move its working tree along with the branch, so the
+# push lands the way a pull would. A Pi holding uncommitted edits refuses the
+# push and keeps them; GIT RESTORE is what throws those away.
+#
+# updateinstead is lowercase on purpose. git matches that word without caring
+# about case, but it asks the system to do the folding, and a Pi running in
+# Turkish folds a capital I to the dotless one. The word then matches nothing
+# and the push dies on the Pi with a bad boolean value.
+arguments = [
+    "push",
+    "--receive-pack=git -c receive.denyCurrentBranch=updateinstead receive-pack",
+    "{host}:{repository}",
+    "HEAD",
+]
+# git starts an ssh of its own, and that one would be free to ask for a
+# password or a host key nothing in a tab can answer. This hands it the same
+# ssh, with the same options, as every other command here.
+ssh_variable = "GIT_SSH_COMMAND"
+
+[developer.commands]
+# The venv interpreter by full path: systemd-run starts with a bare
+# environment, and the system python has none of the dependencies. Without
+# PYTHONUNBUFFERED the live journal stays empty for minutes at a time.
+start = "systemd-run --user --unit={unit} --collect --working-directory={repository}/{app} -E PYTHONUNBUFFERED=1 {repository}/{app}/venv/bin/python main.py"
+stop = "systemctl --user stop {unit}"
+# Prints active, inactive or failed; the status pill is drawn from it.
+is_active = "systemctl --user is-active {unit}"
+# -o cat drops journald's own timestamp so the node's log line stays readable.
+# stdbuf keeps the output line by line: nothing here is a terminal, and a
+# journal written into a pipe would otherwise arrive in silent 4 KB bursts.
+monitor = "stdbuf -oL journalctl --user-unit={unit} -f -o cat"
+pull = "cd {repository} && git pull --ff-only"
+# Throws away every edit made on the Pi, so a checkout or pull can go through
+# again. Files added by hand and the branch itself stay as they are.
+restore = "cd {repository} && git restore ."
+checkout = "cd {repository} && git fetch --prune && git checkout {branch} && git pull --ff-only"
+# The reboot is queued three seconds out rather than run straight away: a
+# board that reboots under the connection takes sshd with it, and the tab
+# would report a failure for a reboot that worked.
+reboot = "{sudo} systemd-run --on-active=3 --collect systemctl reboot"
+# How that command gets root. With no password set the first form is used;
+# with one set the second pipes it in.
+sudo_prefix = "sudo -n"
+sudo_prefix_with_password = "echo {password} | sudo -S -p ''"
+# The Pi's wifi, asked before a pull or checkout: which devices are up and
+# whether there is a way out to the internet. The device lines carry a colon;
+# the verdict (none, portal, limited, full) is the last line without one.
+connectivity = "nmcli -t -f DEVICE,STATE dev status; nmcli networking connectivity check"
+wifi_scan = "nmcli -t -f SSID,SIGNAL,SECURITY dev wifi list --rescan yes"
+wifi_connect = "nmcli dev wifi connect {ssid} password {password}"
+wifi_connect_open = "nmcli dev wifi connect {ssid}"
+# Everything the Pi is asked in the ping test, in one ssh call. Each part is
+# announced by a marker line so the one answer can be cut back into parts;
+# each ping block names its host first and ends with a bare marker. The grep
+# on the socket list exits 1 when the vtol node is not connected, and that is
+# an answer rather than a failure.
+pi_network = "ip -br addr; echo ---NEIGH; ip neigh; echo ---PING; for host in {hosts}; do echo \"host $host\"; ping -c {count} -W {timeout} $host | tail -2; echo ---; done; echo ---SOCKET; ss -tn | grep {port} || true"
+
+[developer.wifi]
+# How long CONNECT waits for nmcli to report a way out, asking this often.
+connect_timeout_ms = 30000
+poll_interval_ms = 1000
+# What nmcli prints when the internet is reachable, and the device and state
+# it names when the wifi is up.
+connectivity_full = "full"
+wlan_device = "wlan0"
+connected_state = "connected"
+# Terse nmcli output separates fields with this.
+field_separator = ":"
+
+[developer.network]
+# Every address the PING TEST looks at. Must match the Pi's network profiles
+# and vtol/config/link.toml on the aircraft.
+rocket_ground = "192.168.1.102"
+rocket_air = "192.168.1.101"
+pi = "192.168.1.105"
+gcs_rocket_subnet = "192.168.1."
+siyi = "192.168.144.25"
+siyi_subnet = "192.168.144."
+# The ground address the aircraft dials: a copy of ground_host in
+# vtol/config/link.toml. The ping test pings it from the Pi beside the
+# laptop's actual address, and DIAGNOSE says so when only one answers.
+link_ground_host = "192.168.1.30"
+# The Rocket link's port, as in vtol/config/link.toml and computer/.
+link_port = 5005
+ping_count = 3
+ping_timeout_s = 2.0
+# The LINK TEST: this many probes on the broker, this far apart, and how long
+# after the last one the replies are given up on.
+probe_count = 20
+probe_interval_ms = 100
+probe_timeout_ms = 2000
+loss_warning_percent = 10.0
+# What this laptop runs; every entry is one process.
+gcs_ping = ["ping", "-n", "{count}", "-w", "{timeout_ms}", "{address}"]
+gcs_addresses = ["ipconfig"]
+gcs_neighbours = ["arp", "-a"]
+gcs_rocket_clients = ["netstat", "-ano", "-p", "tcp"]
+# Windows prints TTL= on every reply whatever the language, and the time in
+# the language of the machine; Linux ping sums up with min/avg/max.
+gcs_reply_pattern = "TTL="
+gcs_time_pattern = "(?:time|süre|zaman)[=<]([0-9]+)\\s*ms"
+gcs_established_text = "ESTABLISHED"
+gcs_address_line_mark = "IPv4"
+pi_received_pattern = "([0-9]+) received"
+pi_average_pattern = "= [0-9.]+/([0-9.]+)/"
+# The Pi's answer is cut into parts at these lines.
+section_prefix = "---"
+neighbours_section = "NEIGH"
+ping_section = "PING"
+socket_section = "SOCKET"
+ping_host_prefix = "host "
+
+[developer.diagnosis]
+no_ping_test = "Run a PING TEST first; DIAGNOSE reads its table."
+all_clear = "Nothing to report: every address answered and every link carried its probes."
+no_rocket_address = "The laptop is not on the Rocket network: its addresses are {addresses} and none is {prefix}x. Check the cable and the adapter, and that the ground Rocket is powered."
+ground_rocket_silent = "The ground Rocket at {address} is not answering although the laptop is on {laptop_address}. Check the PoE injector and the cable to the ground unit."
+rockets_not_linked = "The two Rockets are not linked: the ground unit answers and the air unit at {address} does not. Check the air unit's power and that both are on the same SSID and channel."
+pi_silent = "The VTOL's Pi is not answering on {address}. It may be off, still booting, or its address is not the one in developer.toml."
+pi_unreachable_by_ssh = "The VTOL's Pi answers pings but ssh to {host} failed: {reason}"
+camera_adapter_missing = "The camera adapter is missing on the Pi or has no {prefix}x address: its interfaces are {addresses}."
+camera_silent = "The camera at {address} is not answering from the Pi. Check its power and cable."
+ground_address_mismatch = "The ground station address is different: the aircraft dials {dialled}, which does not answer, and the laptop is at {actual}, which does. Change ground_host in vtol/config/link.toml or set the laptop's address."
+vtol_node_not_connected = "The Pi pings fine but the Rocket server has no client: the vtol node is not running, or it is dialling the wrong network."
+rocket_link_lossy = "The Rocket link is dropping packets ({loss:.0f} % of the probes were lost)."
+probes_unanswered = "No probe came back: the ground services are not relaying, or the aircraft is not echoing suas/link/probe."
+broker_disconnected = "This laptop is not connected to the broker; check that mosquitto is running on the ground services machine."
+mission_link_down = "The aircraft has not been heard on the mission link recently; the vtol node may not be running or the Rocket line is down."
+safety_link_down = "The safety link is down: no MAVLink heartbeat on the RFD900x port."
+
+# The vtol node logs through colorlog, so every journal line arrives wrapped
+# in the escape codes of its level's colour. The codes are taken off the line
+# and the level is repainted from the design tokens; these are the colours
+# colorlog is configured with, as the states they stand for.
+[developer.log_states]
+"31" = "critical"
+"32" = "ok"
+"33" = "caution"
+"36" = "info"
+
+[developer.link_test]
+window_title = "Link test"
+running_text = "Sending {count} probes over the broker, {interval_ms} ms apart ..."
+waiting_text = "Probes sent; waiting for the last replies ..."
+progress_tick_ms = 100
+window_width = 720
+window_height = 620
+retest_text = "RETEST"
+diagnose_text = "DIAGNOSE"
+results_title = "Rocket link and the rest"
+columns = ["measure", "value"]
+rows = { sent = "probes sent", received = "replies heard", loss = "loss %", rtt_average = "rtt avg ms", rtt_max = "rtt max ms", jitter = "jitter ms", longest_gap = "longest gap ms", telemetry_age = "aircraft telemetry age", safety_age = "safety heartbeat age", broker = "broker connected", video_age = "video frame age" }
+age_format = "{age_s:.1f} s ago"
+never_text = "never"
+yes_text = "yes"
+no_text = "no"
+number_format = "{value:.1f}"
+missing_text = "-"
+done_text = "Link test done: {received} of {sent} probes answered."
+diagnosis_title = "Diagnosis"
+diagnosis_separator = "\n\n"
+flying_text = "The link test loads the mission link, so it waits until the aircraft is disarmed."
+
+[developer.text]
+tab_title = "DEV"
+nodes_title = "NODES"
+vtol_name = "VTOL"
+unit_label = "vtol unit:"
+start_text = "START VTOL"
+stop_text = "STOP VTOL"
+monitor_text = "MONITOR"
+monitor_stop_text = "STOP MONITOR"
+reboot_text = "REBOOT PI"
+link_test_text = "LINK TEST"
+ping_test_text = "PING TEST"
+ground_start_text = "START GROUND SERVICES"
+ground_stop_text = "STOP GROUND SERVICES"
+simulation_text = "SIMULATION"
+test_mission_text = "TEST MISSION"
+test_mission_name = "SITL"
+action_test_mission = "test mission"
+test_mission_hint = "START VTOL first and wait for 'Waiting ... for the operator to start AUTO', then TEST MISSION. It uploads the laps and the survey, arms and starts AUTO, exactly as Mission Planner would."
+status_running = "running"
+status_stopped = "stopped"
+status_failed = "failed"
+status_unreachable = "no ssh"
+status_unknown = "—"
+reboot_title = "Reboot the VTOL's Pi?"
+reboot_question = """The Pi will go down for about half a minute.
+
+The node does not come back with the board — press START VTOL again once
+the Pi is up. Never with the aircraft in the air."""
+repository_title = "REPOSITORY"
+repository_hint = "PUSH TO PI sends the branch open here into the same branch on the Pi, so a Pi with no way out to GitHub still gets it. A checkout or a push fails on a Pi with uncommitted changes rather than throwing them away; GIT RESTORE throws them away. The Pi is asked for its wifi before a pull or a checkout, but not before a push: that one needs nothing but ssh."
+branch_label = "branch:"
+branch_placeholder = "branch name"
+pull_text = "GIT PULL"
+push_text = "PUSH TO PI"
+checkout_text = "CHECKOUT"
+restore_text = "GIT RESTORE"
+restore_title = "Throw away the edits on the Pi?"
+restore_question = """Every uncommitted change in the repository on the VTOL's Pi is lost.
+
+This cannot be undone."""
+monitor_title = "MONITOR"
+clear_text = "CLEAR"
+monitor_empty_text = "MONITOR opens the live journal of the vtol unit here."
+network_title = "NETWORK"
+network_hint = "PING TEST asks this laptop and the Pi what each can see. DIAGNOSE reads the table and the last link test."
+network_empty_text = "No ping test yet."
+network_running_text = "Pinging ..."
+network_done_text = "Ping test done."
+diagnose_text = "DIAGNOSE"
+diagnosis_title = "DIAGNOSIS"
+output_title = "COMMAND OUTPUT"
+no_branch_text = "Type the branch to check out first."
+wifi_checking_text = "VTOL | checking its wifi before the {action}"
+wifi_ok_text = "VTOL | wifi up with internet, going ahead"
+wifi_check_failed_text = "VTOL | could not read its wifi state (ssh failed); running the command anyway"
+# What each command is called in the output terminal.
+action_start = "start"
+action_stop = "stop"
+action_pull = "git pull"
+action_push = "push"
+action_reboot = "reboot"
+action_checkout = "checkout {branch}"
+action_restore = "git restore"
+action_ground = "ground services"
+simulation_write_failed = "Could not set the simulation switch: {reason}"
+command_sent = "{vehicle} | {action} | sent"
+command_done = "{vehicle} | {action} | done"
+command_failed = "{vehicle} | {action} | failed (exit {exit_code})"
+output_line = "{vehicle} | {line}"
+monitor_open = "{vehicle} | monitor open"
+monitor_closed = "{vehicle} | monitor closed"
+monitor_ended = "{vehicle} | monitor ended by itself (exit {exit_code})"
+local_node_ended = "{vehicle} | node ended by itself (exit {exit_code})"
+ground_name = "Ground"
+link_test_started = "Link test started: {count} probes."
+
+[developer.text.wifi_dialog]
+window_title = "VTOL wifi"
+title_line = "The VTOL has no wifi connection"
+no_internet_line = "The VTOL is on wifi but has no internet"
+state_line = "Reached over {host}. Devices: {devices}."
+device_format = "{device} {state}"
+device_separator = ", "
+hint = "Pick a network and CONNECT. The {action} runs by itself once the Pi reports a way out."
+columns = ["network", "signal %", "security"]
+open_text = "open"
+locked_text = "locked"
+password_placeholder = "password"
+show_password_text = "SHOW"
+hide_password_text = "HIDE"
+rescan_text = "RESCAN"
+connect_text = "CONNECT"
+cancel_text = "CANCEL"
+scanning_text = "Scanning ..."
+connecting_text = "Connecting to {ssid} ..."
+waiting_text = "Connected; waiting for the internet ({seconds} s left) ..."
+connected_text = "Internet reachable. Running the {action}."
+failed_text = "Connecting failed: {reason}"
+timeout_text = "Connected to {ssid}, but no internet after {seconds} s. Try another network."
+no_network_text = "Pick a network first."
+window_width = 620
+window_height = 480
+
+[developer.text.network]
+columns = ["", "GCS sees", "Pi sees"]
+rows = { addresses = "own addresses", rocket_ground = "Rocket ground unit", rocket_air = "Rocket air unit", pi = "VTOL Pi", laptop = "GCS laptop", siyi = "SIYI A8 mini", neighbours = "neighbours", rocket_link = "Rocket link client" }
+pending_text = "..."
+not_applicable_text = "—"
+ping_format = "{average_ms:.0f} ms"
+no_reply_text = "no reply"
+address_separator = ", "
+interface_format = "{interface} {address}"
+laptop_pi_format = "dialled {dialled}: {dialled_result} | actual {actual}: {actual_result}"
+rocket_client_text = "client connected"
+rocket_no_client_text = "no client"
+rocket_pi_link_text = "connected to :{port}"
+rocket_pi_no_link_text = "not connected"
+pi_unreachable_text = "ssh failed"

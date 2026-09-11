@@ -9,10 +9,12 @@ display a wrong number is worse than a visible gap.
 import time
 
 from competitions.suas.config import (
+    KEY_AIRSPEED,
     KEY_ALTITUDE_AGL,
     KEY_ALTITUDE_AMSL,
     KEY_ARMED,
     KEY_BATTERY_PERCENT,
+    KEY_BATTERY_SOURCE,
     KEY_BATTERY_VOLTAGE,
     KEY_GPS_FIX,
     KEY_GROUND_SPEED,
@@ -38,11 +40,13 @@ class VehicleState:
         self.altitude_amsl_metres: float | None = None
         self.terrain_clearance_metres: float | None = None
         self.ground_speed_metres_per_second: float | None = None
+        self.airspeed_metres_per_second: float | None = None
         self.heading_degrees: float | None = None
         self.mode: str | None = None
         self.armed: bool | None = None
         self.battery_voltage: float | None = None
         self.battery_percent: float | None = None
+        self.battery_source: str | None = None
         self.gps_fix: str | None = None
         self.satellite_count: int | None = None
 
@@ -66,6 +70,9 @@ class VehicleState:
         self.ground_speed_metres_per_second = float_or_keep(
             payload.get(KEY_GROUND_SPEED), self.ground_speed_metres_per_second
         )
+        self.airspeed_metres_per_second = float_or_keep(
+            payload.get(KEY_AIRSPEED), self.airspeed_metres_per_second
+        )
         self.heading_degrees = float_or_keep(payload.get(KEY_HEADING), self.heading_degrees)
         self.battery_voltage = float_or_keep(
             payload.get(KEY_BATTERY_VOLTAGE), self.battery_voltage
@@ -77,6 +84,8 @@ class VehicleState:
             payload.get(KEY_SATELLITE_COUNT), self.satellite_count
         )
 
+        if KEY_BATTERY_SOURCE in payload:
+            self.battery_source = str(payload[KEY_BATTERY_SOURCE])
         if KEY_MODE in payload:
             self.mode = str(payload[KEY_MODE])
         if KEY_GPS_FIX in payload:

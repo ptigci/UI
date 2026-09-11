@@ -64,6 +64,22 @@ class MapProjection:
         y = self.view_height / 2 - (north - self.centre_north) * self.pixels_per_metre
         return QPointF(x, y)
 
+    def to_coordinate(self, point: QPointF) -> tuple[float, float]:
+        """The place under a point on screen — the way back out of the map.
+
+        This is what lets the operator point at somebody in the mosaic and have
+        the swarm sent to them. It is the same maths as above read backwards,
+        and it is only meaningful once an origin has been set.
+        """
+        east = self.centre_east + (point.x() - self.view_width / 2) / self.pixels_per_metre
+        north = self.centre_north - (point.y() - self.view_height / 2) / self.pixels_per_metre
+        latitude_radians = math.radians(self.origin_latitude)
+        latitude = self.origin_latitude + math.degrees(north / EARTH_RADIUS_METRES)
+        longitude = self.origin_longitude + math.degrees(
+            east / (EARTH_RADIUS_METRES * math.cos(latitude_radians))
+        )
+        return latitude, longitude
+
     def fit(self, coordinates: list) -> None:
         """Centre and zoom so every given coordinate is comfortably on screen."""
         if not coordinates or not self.view_width or not self.view_height:

@@ -8,6 +8,7 @@ flying.
 from datetime import datetime
 
 from config import TERMINAL_TIME_FORMAT
+from theme.tokens import STATE_COLORS
 from widgets import Card, TerminalView
 from competitions.international_uav.config import LOG_PANEL_TITLE
 
@@ -23,8 +24,11 @@ class LogPanel(Card):
         self.terminal = TerminalView(self)
         self.add_widget(self.terminal)
 
-    def append(self, message: str) -> None:
-        self.terminal.append_line(f"{self.timestamp()} | {message}")
+    def append(self, message: str, state: str | None = None) -> None:
+        """One line, in the colour of its state; no state is the plain text colour."""
+        self.terminal.append_line(
+            f"{self.timestamp()} | {message}", STATE_COLORS.get(state)
+        )
 
     @staticmethod
     def timestamp() -> str:

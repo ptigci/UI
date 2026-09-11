@@ -20,4 +20,8 @@ formation_angle_min = 0.0
 formation_angle_max = 180.0
 rotation_min = -180.0
 rotation_max = 180.0
+# The QR numbers GET QR LOCATION offers. They are the placards the mission
+# flies to, so they must match the qr.positions block of the drone config.
+qr_number_min = 1
+qr_number_max = 3
 spinbox_decimals = 1

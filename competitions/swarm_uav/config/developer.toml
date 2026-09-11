@@ -1,0 +1,204 @@
+# The DEV tab: running the drone nodes on the companion Pis over SSH.
+#
+# The commands are the ones from guides/running-drones-over-ssh.md in the drone
+# repository. Every node is a transient systemd unit, so it keeps running when
+# this window, the SSH connection or the whole laptop goes away, and its output
+# is read back out of the journal.
+
+[developer]
+# Drone 2 runs on cezeri@rpi2.local, and so on for every id.
+host_pattern = "cezeri@rpi{drone_id}.local"
+ssh_program = "ssh"
+# Nothing in a tab can answer a password prompt or a host key question, so ssh
+# is told never to ask: it fails with a message instead of hanging forever.
+ssh_options = ["-o", "BatchMode=yes", "-o", "StrictHostKeyChecking=accept-new"]
+repository_path = "/home/cezeri/Swarm-UAV-2026"
+unit_name = "drone"
+# Windows cannot ask a console process to close, so a monitor that is still
+# alive this long after being asked is killed.
+stop_wait_ms = 200
+# How the open monitors are laid out, and how short one may be drawn. Three
+# columns so the three competition drones sit side by side on one row; a
+# fourth monitor starts the next row.
+monitor_columns = 3
+monitor_min_height = 140
+# How the monitors and the command output share the height left under the
+# control row, and how short the output may be drawn. A command that answers
+# in a paragraph was unreadable through the four lines it used to get.
+monitor_share = 3
+output_share = 2
+output_min_height = 220
+
+# What runs on this laptop rather than on a Pi: the computer node always, and
+# the drone nodes when SIMULATION is ticked, because SITL and the UDP mesh
+# both live here. Paths are relative to the UI root. Each app's venv
+# interpreter is used when it exists and the fallback otherwise.
+[developer.local]
+fallback_python = "python"
+script = "main.py"
+# Unbuffered, or a node's output sits in a pipe and arrives in bursts; UTF-8,
+# or a Windows python writes the console codepage and the tab misreads it.
+environment = { PYTHONUNBUFFERED = "1", PYTHONIOENCODING = "utf-8" }
+# Every START writes the SIMULATION box into this line of these files first,
+# so the laptop is never left in the wrong mode by accident. The Pis are not
+# touched: their checkout stays on real hardware.
+simulation_files = ["../Swarm-UAV/drone/config/general.yaml", "../Swarm-UAV/computer/config/general.yaml"]
+simulation_pattern = "^simulation_mode: .*$"
+simulation_line = "simulation_mode: {value}"
+
+[developer.local.drone]
+directory = "../Swarm-UAV/drone"
+python = "../Swarm-UAV/drone/venv/Scripts/python.exe"
+
+[developer.local.computer]
+directory = "../Swarm-UAV/computer"
+python = "../Swarm-UAV/computer/venv/Scripts/python.exe"
+
+[developer.commands]
+# The venv interpreter by full path: systemd-run starts with a bare
+# environment, and the system python has none of the dependencies. Without
+# PYTHONUNBUFFERED the live journal stays empty for minutes at a time.
+start = "systemd-run --user --unit={unit} --collect --working-directory={repository}/drone -E PYTHONUNBUFFERED=1 {repository}/drone/venv/bin/python main.py {drone_id}"
+stop = "systemctl --user stop {unit}"
+# -o cat drops journald's own timestamp so the node's log line stays readable.
+# stdbuf keeps the output line by line: nothing here is a terminal, and a
+# journal written into a pipe would otherwise arrive in silent 4 KB bursts.
+monitor = "stdbuf -oL journalctl --user-unit={unit} -f -o cat"
+pull = "cd {repository} && git pull --ff-only"
+# Throws away every edit made on the Pi, so a checkout or pull can go through
+# again. Files added by hand and the branch itself stay as they are.
+restore = "cd {repository} && git restore ."
+# Walks the PPS chain on the Pi (chronyd, gpsd and its fix, the pulse on the
+# pin, chrony's source), starts or restarts what it can, and ends with one
+# VERDICT line saying what is wrong or that PPS is locked.
+pps_check = "cd {repository}/drone && {repository}/drone/venv/bin/python -m sync.pps_check"
+checkout = "cd {repository} && git fetch --prune && git checkout {branch} && git pull --ff-only"
+# The reboot is queued three seconds out rather than run straight away: a
+# board that reboots under the connection takes sshd with it, and the tab
+# would report a failure for a reboot that worked.
+reboot = "{sudo} systemd-run --on-active=3 --collect systemctl reboot"
+# How that command gets root. With no password set the first form is used, and
+# -n makes a Pi that wants one say so instead of waiting for a prompt nobody
+# can answer; with a password set the second pipes it in. The password itself
+# is never written here — this file is in git. Put it in secrets.toml next to
+# this one, which is not:
+#
+#     [developer]
+#     sudo_password = "the password"
+#
+# A password containing a single quote would need different quoting than this.
+sudo_prefix = "sudo -n"
+sudo_prefix_with_password = "echo '{password}' | sudo -S -p ''"
+
+# PUSH TO PI sends the branch checked out on this laptop straight into the Pi's
+# own checkout over ssh. It is how a Pi is updated on a field WiFi with no way
+# out to GitHub, where GIT PULL has nothing to talk to. The directory is
+# relative to the UI root, as everywhere else here.
+[developer.push]
+git_program = "git"
+directory = "../Swarm-UAV"
+# The Pi's git is told to move its working tree along with the branch, so the
+# push lands the way a pull would. A Pi holding uncommitted edits refuses the
+# push and keeps them; GIT RESTORE is what throws those away.
+#
+# updateinstead is lowercase on purpose. git matches that word without caring
+# about case, but it asks the system to do the folding, and a Pi running in
+# Turkish folds a capital I to the dotless one. The word then matches nothing
+# and the push dies on the Pi with a bad boolean value.
+arguments = [
+    "push",
+    "--receive-pack=git -c receive.denyCurrentBranch=updateinstead receive-pack",
+    "{host}:{repository}",
+    "HEAD",
+]
+# git starts an ssh of its own, and that one would be free to ask for a
+# password or a host key nothing in a tab can answer. This hands it the same
+# ssh, with the same options, as every other command here.
+ssh_variable = "GIT_SSH_COMMAND"
+
+# GET LOGS copies one flight day off the Pis into the folder the flight logs
+# are kept in on this laptop. All three drones write into the one folder named
+# after the day, which is how the sets are read afterwards. Like the push, scp
+# runs here rather than on the Pi, and the destination is relative to the UI
+# root.
+[developer.logs]
+scp_program = "scp"
+# -r for the run folders inside the day, -p to keep the times the Pi wrote.
+options = ["-r", "-p"]
+destination = "../Swarm-UAV/real-fligth-logs"
+day_folder = "log_{date}"
+date_format = "%d-%m-%Y"
+# What is inside the day folder rather than the folder itself: with the folder
+# already there from an earlier drone, scp would put a second one inside it.
+remote_path = "{repository}/drone/log/{day_folder}/*"
+
+# The nodes log through colorlog, so every journal line arrives wrapped in the
+# escape codes of its level's colour (drone/config/logging.yaml). The codes are
+# taken off the line and the level is repainted from the design tokens; these
+# are the colours colorlog is configured with, as the states they stand for.
+[developer.log_states]
+"31" = "critical"
+"32" = "ok"
+"33" = "caution"
+"36" = "info"
+
+[developer.text]
+tab_title = "DEV"
+nodes_title = "NODES"
+simulation_text = "SIMULATION"
+computer_start_text = "START COMPUTER NODE"
+computer_stop_text = "STOP COMPUTER NODE"
+computer_name = "Computer"
+status_running = "running"
+status_stopped = "stopped"
+start_text = "START NODES"
+stop_text = "STOP NODES"
+monitor_text = "MONITOR"
+reboot_text = "REBOOT PI"
+pps_check_text = "PPS CHECK"
+logs_text = "GET LOGS"
+reboot_title = "Reboot the companion computers?"
+reboot_question = """{vehicles} will go down for about half a minute.
+
+The node does not come back with the board — press START NODES again once the
+Pi is up. Never with a drone in the air."""
+monitor_stop_text = "STOP MONITOR"
+repository_title = "REPOSITORY"
+repository_hint = "Runs on the ticked drones. PUSH TO PI sends the branch open here into the same branch on the Pi, so a WiFi with no way out to GitHub still updates them. A checkout or a push fails on a Pi with uncommitted changes rather than throwing them away; GIT RESTORE throws them away."
+branch_label = "branch:"
+branch_placeholder = "branch name"
+pull_text = "GIT PULL"
+push_text = "PUSH TO PI"
+checkout_text = "CHECKOUT"
+restore_text = "GIT RESTORE"
+restore_title = "Throw away the edits on the companion computers?"
+restore_question = """Every uncommitted change in the repository on {vehicles} is lost.
+
+This cannot be undone."""
+monitors_title = "MONITORS"
+# Empties one drone's monitor; the journal keeps arriving underneath it.
+clear_text = "CLEAR"
+monitors_empty_text = "No monitor open. MONITOR opens the live journal of every ticked drone."
+output_title = "COMMAND OUTPUT"
+no_selection_text = "Tick at least one drone first."
+no_branch_text = "Type the branch to check out first."
+# What each command is called in the output terminal.
+action_start = "start"
+action_stop = "stop"
+action_pull = "git pull"
+action_push = "push"
+action_reboot = "reboot"
+action_pps_check = "pps check"
+action_logs = "get logs {day}"
+action_checkout = "checkout {branch}"
+action_restore = "git restore"
+action_computer = "computer node"
+simulation_write_failed = "Could not set the simulation switch: {reason}"
+command_sent = "{vehicle} | {action} | sent"
+command_done = "{vehicle} | {action} | done"
+command_failed = "{vehicle} | {action} | failed (exit {exit_code})"
+output_line = "{vehicle} | {line}"
+monitor_open = "{vehicle} | monitor open"
+monitor_closed = "{vehicle} | monitor closed"
+monitor_ended = "{vehicle} | monitor ended by itself (exit {exit_code})"
+local_node_ended = "{vehicle} | node ended by itself (exit {exit_code})"
